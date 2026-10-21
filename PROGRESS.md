@@ -2,7 +2,7 @@
 
 | Fase | Status | Detalhes |
 |---|---|---|
-| 1. Bootstrap Expo/TS/Jest | ✅ 100% | Expo SDK 58 + RN 0.88 + TS 6 strict + Expo Router; `app.json` (com.fujadosol.app, dark/light, Info.plist pt-BR, privacy manifest), `eas.json` (development/preview/production), Jest + ts-jest; ícones/splash gerados por `scripts/generate-assets.js` (rasterizador SDF próprio, ícone 1024 sem alfa). |
+| 1. Bootstrap Expo/TS/Jest | ✅ 100% | Expo SDK 57 + RN 0.88 + TS 6 strict + Expo Router; `app.json` (com.fujadosol.app, dark/light, Info.plist pt-BR, privacy manifest), `eas.json` (development/preview/production), Jest + ts-jest; ícones/splash gerados por `scripts/generate-assets.js` (rasterizador SDF próprio, ícone 1024 sem alfa). |
 | 2. Motor físico (`src/engine/`) | ✅ 100% | `solarPosition` (Meeus/NOAA, refração, Kasten-Young, DNI, UV, nascer/pôr, golden hour, depressão do horizonte em altitude), `geodesic` (Haversine, bearing, SLERP, splines, polyline 5/6, Douglas-Peucker), `routeDiscretizer`, `exposureCalculator` (Δψ, faces E/D/F/T/teto, viradas solares, alertas de cortina, golden hour), `seatRecommender` (5 modais), `timeOptimizer` (12–48 horários), `timezone` (UE/EUA/Chile). |
 | 3. Dados offline + serviços | ✅ 100% | `hubs.ts` (160+ locais reais, 27 UFs), `presetTrips.ts` (10 viagens, 5 modais), `geocodingService` (fuzzy offline + Nominatim + cache), `routingService` (OSRM + fallback geodésico/waypoints/curva), `storageService` (favoritos, histórico, preferências). |
 | 4. Testes | ✅ 100% | 157 testes passando; cobertura do motor ≈ 99,5% linhas / 94% branches. Invariantes físicos verificados (L/O, N→S manhã/tarde, noite = 0%, inversão A→B/B→A, altitude, golden hour frente/trás). |

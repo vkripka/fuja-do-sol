@@ -1,6 +1,6 @@
 # ☀️ Fuja do Sol!
 
-App iOS (React Native + Expo SDK 58 + TypeScript strict + Expo Router) que diz **de que lado sentar** em viagens de ônibus, avião, carro, trem ou barco para fugir do sol — ou para ver o pôr do sol.
+App iOS (React Native + Expo SDK 57 + TypeScript strict + Expo Router) que diz **de que lado sentar** em viagens de ônibus, avião, carro, trem ou barco para fugir do sol — ou para ver o pôr do sol.
 
 ## Rodar
 

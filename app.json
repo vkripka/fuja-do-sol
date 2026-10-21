@@ -92,7 +92,8 @@
         {
           "locationWhenInUsePermission": "O Fuja do Sol! usa sua localização apenas para preencher automaticamente a origem da viagem. O cálculo solar acontece no próprio iPhone e sua localização nunca é armazenada ou compartilhada."
         }
-      ]
+      ],
+      "expo-status-bar"
     ],
     "extra": {
       "router": {}
