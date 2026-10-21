@@ -1,0 +1,24 @@
+{
+  "locale": "en-US",
+  "name": "Fuja do Sol!",
+  "subtitle": "Pick the shady side to sit",
+  "promotionalText": "Traveling by bus, plane, car, train or boat? Find out in seconds which side to sit on to escape the sun — or to watch the sunset from your window.",
+  "description": "Stop spending hours with the sun blazing through your window.\n\nFuja do Sol! (\"Escape the Sun!\") uses precise astronomy to work out which side of the vehicle the sun will hit during your whole trip — and recommends the coolest seat. Or, if you love photography, the best seat to watch sunrise or sunset.\n\nHOW IT WORKS\nEnter origin, destination, date, departure time and transport mode. The app traces the real road route, splits the trip into dozens of segments and computes the exact sun position (azimuth and elevation) for every minute using Jean Meeus / NOAA astronomical algorithms. Everything runs on your iPhone.\n\nINSTANT VERDICT\n• \"Sit on the RIGHT side — 86% cooler\"\n• Share of sun on the left, right and windshield\n• Solar Turning Points: when the road bends and the sun switches sides\n\nSEAT HEATMAP\n• 44-seat coach (Brazilian numbering: odd seats by the window)\n• 3-3 airliner (A–F) with wing rows\n• 5-seat car, including sun through the windshield\n• Panoramic train car and ferry/boat (port, starboard and open deck)\n• Best Seat badge plus per-seat details: time in shade, thermal comfort, UVA at the window and sunset view\n\nTRIP X-RAY\n• 360° solar compass with the vehicle, sun rays and shadow\n• Route map colored segment by segment by sun side\n• Scrubber: drag through the trip and see where the sun comes from\n• Timeline with night, sunrise and sunset\n\nBEST TIME TO TRAVEL\nSimulate the same trip departing at every hour of the day to find the Shade Champion and Golden Hour Champion departure times. Apply with one tap.\n\nGOLDEN HOUR MODE\nFlip the logic and find the perfect window for sunrise or sunset — even on flights, where cruising altitude makes the sun rise earlier.\n\nAND MORE\n• \"Time to close the curtain\" reminders before the sun turns to your side\n• Shareable Shade Ticket\n• 10 famous ready-made routes\n• 160+ cities, bus terminals, airports and ports that work offline\n• UV guide: why windshields protect you and side windows don't\n• Automatic dark mode\n\nPRIVACY\nNo sign-up, no ads, no tracking. Your trips stay on your device.",
+  "keywords": "sun,shade,seat,bus,window,side,travel,flight,sunset,golden hour,heat,UV,road trip,train",
+  "supportUrl": "https://fujadosol.app/suporte",
+  "marketingUrl": "https://fujadosol.app",
+  "privacyPolicyUrl": "https://fujadosol.app/privacidade",
+  "primaryCategory": "TRAVEL",
+  "secondaryCategory": "NAVIGATION",
+  "ageRating": "4+",
+  "copyright": "2026 Fuja do Sol!",
+  "whatsNew": "First release of Fuja do Sol! Find the shady side on bus, plane, car, train and boat trips.",
+  "reviewNotes": "Thank you for reviewing Fuja do Sol! The app UI is in Brazilian Portuguese.\n\nNo login or purchases. Quick test: on the \"Simular\" tab tap one of the famous routes (e.g., \"Via Dutra\"). The verdict appears immediately; tap \"Abrir Raio-X da viagem\" to see the solar compass, route map and timeline, then check the \"Assentos\" (seats) and \"Horários\" (best time) tabs.\n\nHOW IT WORKS: the sun position is computed on-device with Jean Meeus' Astronomical Algorithms in the NOAA formulation — Julian day, declination, equation of time, hour angle, azimuth, elevation with atmospheric refraction and Kasten-Young air mass. The route is split into up to 120 segments; for each we compute the vehicle heading and the sun's relative angle, decomposing irradiance into left/right windows, windshield and rear, with roof blocking for high sun.\n\nNETWORK (optional): road geometry from the public OSRM server and place search from Nominatim (OpenStreetMap). Offline, the app uses a built-in database and geodesic routes with full functionality.\n\nPERMISSIONS: Location (optional, only when tapping \"Usar minha localização\") and local Notifications (optional, only when tapping \"Agendar Alerta de Cortina\"). No data is collected, shared or linked to the user.",
+  "screenshotCaptions": [
+    "Know which side to sit on",
+    "The sun, minute by minute",
+    "The best seat, calculated",
+    "Find the coolest departure",
+    "Share with your travel buddies"
+  ]
+}

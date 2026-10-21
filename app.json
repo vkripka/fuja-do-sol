@@ -1,0 +1,101 @@
+{
+  "expo": {
+    "name": "Fuja do Sol!",
+    "slug": "fuja-do-sol",
+    "scheme": "fujadosol",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "description": "Descubra de qual lado sentar para fugir do sol (ou ver o pôr do sol) em viagens de ônibus, avião, carro, trem e barco.",
+    "primaryColor": "#FF9500",
+    "backgroundColor": "#FFF6E8",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.fujadosol.app",
+      "buildNumber": "1",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "CFBundleDevelopmentRegion": "pt-BR",
+        "CFBundleLocalizations": [
+          "pt-BR",
+          "en"
+        ],
+        "CFBundleAllowMixedLocalizations": true,
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocationWhenInUseUsageDescription": "O Fuja do Sol! usa sua localização apenas para preencher automaticamente a origem da viagem. O cálculo solar acontece no próprio iPhone e sua localização nunca é armazenada ou compartilhada."
+      },
+      "privacyManifests": {
+        "NSPrivacyTracking": false,
+        "NSPrivacyTrackingDomains": [],
+        "NSPrivacyCollectedDataTypes": [],
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "CA92.1"
+            ]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryFileTimestamp",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "C617.1"
+            ]
+          }
+        ]
+      }
+    },
+    "android": {
+      "package": "com.fujadosol.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FF9500"
+      },
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sharing",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 220,
+          "resizeMode": "contain",
+          "backgroundColor": "#FFF6E8",
+          "dark": {
+            "image": "./assets/splash-icon.png",
+            "backgroundColor": "#0B1026"
+          }
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#FF9500"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "O Fuja do Sol! usa sua localização apenas para preencher automaticamente a origem da viagem. O cálculo solar acontece no próprio iPhone e sua localização nunca é armazenada ou compartilhada."
+        }
+      ]
+    ],
+    "extra": {
+      "router": {}
+    }
+  }
+}

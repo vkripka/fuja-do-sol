@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "node16",
+    "moduleResolution": "node16",
+    "isolatedModules": true,
+    "rootDir": ".",
+    "noEmit": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  }
+}

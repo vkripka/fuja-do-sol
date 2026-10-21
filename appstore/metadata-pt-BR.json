@@ -1,0 +1,24 @@
+{
+  "locale": "pt-BR",
+  "name": "Fuja do Sol!",
+  "subtitle": "Escolha o lado da sombra",
+  "promotionalText": "Vai viajar de ônibus, avião, carro, trem ou barco? Descubra em segundos de que lado sentar para fugir do sol — ou para ver o pôr do sol pela janela.",
+  "description": "Nunca mais passe horas com o sol batendo na sua janela.\n\nO Fuja do Sol! calcula, com precisão astronômica, por qual lado do veículo o sol vai entrar durante toda a sua viagem — e indica o assento mais fresco. Ou, se você ama fotografia, o melhor lugar para ver o nascer ou o pôr do sol.\n\nCOMO FUNCIONA\nInforme origem, destino, data, horário e meio de transporte. O app traça a rota real da estrada, divide a viagem em dezenas de trechos e calcula a posição exata do Sol (azimute e elevação) em cada minuto, usando os algoritmos astronômicos de Jean Meeus e da NOAA. Tudo é calculado no seu iPhone.\n\nVEREDITO IMEDIATO\n• \"Sente do lado DIREITO — 86% mais fresco\"\n• Percentual de sol na esquerda, direita e para-brisa\n• Pontos de Virada Solar: os momentos em que a estrada faz curva e o sol troca de lado\n\nMAPA DE ASSENTOS COM MAPA DE CALOR\n• Ônibus rodoviário de 44 lugares (numeração brasileira: ímpares na janela)\n• Avião 3x3 (A–F) com indicação das asas\n• Carro de 5 lugares, incluindo o sol pelo para-brisa\n• Trem panorâmico e barco/balsa (bombordo, estribordo e convés)\n• Selo de Melhor Assento e detalhes de cada poltrona: tempo na sombra, conforto térmico, UVA na janela e vista do pôr do sol\n\nRAIO-X DA VIAGEM\n• Bússola solar 360° mostrando o veículo, os raios de sol e a sombra\n• Mapa da rota colorido trecho a trecho pelo lado do sol\n• Scrubber: arraste e veja onde você estará e de onde vem o sol\n• Linha do tempo com noite, nascer e pôr do sol\n\nMELHOR HORÁRIO PARA VIAJAR\nSimule a mesma viagem saindo em cada hora do dia e descubra o Horário Campeão de Sombra e o Horário Campeão de Golden Hour. Aplique com um toque.\n\nMODO GOLDEN HOUR\nInverta a lógica e descubra a janela perfeita para ver o nascer ou o pôr do sol — inclusive em voos, onde a altitude de cruzeiro faz o sol nascer mais cedo.\n\nMAIS\n• Alertas \"Hora de fechar a cortina\" antes de o sol virar para o seu lado\n• Bilhete de Sombra para compartilhar no WhatsApp\n• 10 rotas famosas prontas: Via Dutra, Ponte Aérea, Trem da Serra do Mar, Balsa de Ilhabela, Lisboa–Porto e mais\n• Mais de 160 cidades, rodoviárias, aeroportos e portos que funcionam offline\n• Guia de proteção UV: por que o para-brisa protege e a janela lateral não\n• Modo escuro automático\n\nPRIVACIDADE\nSem cadastro, sem anúncios e sem rastreamento. Suas viagens ficam só no seu aparelho.",
+  "keywords": "sol,sombra,assento,poltrona,ônibus,viagem,janela,lado,avião,pôr do sol,golden hour,calor,UV,estrada",
+  "supportUrl": "https://fujadosol.app/suporte",
+  "marketingUrl": "https://fujadosol.app",
+  "privacyPolicyUrl": "https://fujadosol.app/privacidade",
+  "primaryCategory": "TRAVEL",
+  "secondaryCategory": "NAVIGATION",
+  "ageRating": "4+",
+  "copyright": "2026 Fuja do Sol!",
+  "whatsNew": "Primeira versão do Fuja do Sol! Descubra o lado da sombra em viagens de ônibus, avião, carro, trem e barco.",
+  "reviewNotes": "Obrigado por revisar o Fuja do Sol!\n\nNão há login nem compras. Para testar rapidamente: na aba Simular, toque em uma das \"Rotas famosas em 1 toque\" (ex.: Via Dutra). O veredito aparece na hora; toque em \"Abrir Raio-X da viagem\" para ver a bússola solar, o mapa e a linha do tempo, e use as abas Assentos e Horários.\n\nCOMO O APP FUNCIONA: a posição do Sol é calculada localmente no aparelho pelos algoritmos astronômicos de Jean Meeus (Astronomical Algorithms) na formulação da NOAA — dia juliano, declinação, equação do tempo, ângulo horário, azimute, elevação com refração atmosférica e massa de ar de Kasten-Young. A rota é dividida em até 120 trechos; para cada um calculamos o rumo do veículo e o ângulo relativo do Sol, decompondo a irradiância nas janelas esquerda/direita, para-brisa e traseira, com bloqueio do teto quando o Sol está alto.\n\nSERVIÇOS DE REDE (opcionais): geometria de estradas via OSRM público (router.project-osrm.org) e busca de endereços via Nominatim (OpenStreetMap). Sem internet, o app usa uma base offline embutida e rotas geodésicas, sem perder funcionalidades.\n\nPERMISSÕES: Localização (opcional, só ao tocar em \"Usar minha localização\") e Notificações locais (opcional, só ao tocar em \"Agendar Alerta de Cortina\"). Nenhum dado é coletado, compartilhado ou vinculado ao usuário.",
+  "screenshotCaptions": [
+    "Saiba de que lado sentar",
+    "O sol minuto a minuto",
+    "O melhor assento, calculado",
+    "Descubra o horário mais fresco",
+    "Compartilhe com quem vai junto"
+  ]
+}
