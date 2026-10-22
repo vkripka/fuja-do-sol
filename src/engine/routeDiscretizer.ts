@@ -64,24 +64,48 @@ export function discretizeRoute(
   return segments;
 }
 
-/** Velocidade média de bloco (km/h) por modal e fator de sinuosidade da rota real. */
-export const MODE_PROFILES: Record<TransportMode, { speedKmh: number; overheadMinutes: number; detourFactor: number; label: string }> = {
-  bus: { speedKmh: 68, overheadMinutes: 15, detourFactor: 1.22, label: 'Ônibus' },
-  car: { speedKmh: 82, overheadMinutes: 0, detourFactor: 1.22, label: 'Carro' },
-  train: { speedKmh: 75, overheadMinutes: 5, detourFactor: 1.15, label: 'Trem' },
-  boat: { speedKmh: 28, overheadMinutes: 10, detourFactor: 1.08, label: 'Barco' },
-  plane: { speedKmh: 790, overheadMinutes: 35, detourFactor: 1.04, label: 'Avião' },
+/**
+ * Velocidade média de bloco (km/h) por modal, fator de sinuosidade da rota real,
+ * tempo extra (paradas, taxiamento) e fator sobre a duração de carro do OSRM.
+ */
+export const MODE_PROFILES: Record<
+  TransportMode,
+  { speedKmh: number; overheadMinutes: number; detourFactor: number; osrmFactor: number; label: string }
+> = {
+  bus: { speedKmh: 68, overheadMinutes: 15, detourFactor: 1.22, osrmFactor: 1.2, label: 'Ônibus' },
+  car: { speedKmh: 82, overheadMinutes: 0, detourFactor: 1.22, osrmFactor: 1.0, label: 'Carro' },
+  train: { speedKmh: 75, overheadMinutes: 5, detourFactor: 1.15, osrmFactor: 1.1, label: 'Trem' },
+  boat: { speedKmh: 28, overheadMinutes: 10, detourFactor: 1.08, osrmFactor: 1.0, label: 'Barco' },
+  plane: { speedKmh: 790, overheadMinutes: 35, detourFactor: 1.04, osrmFactor: 1.0, label: 'Avião' },
 };
 
+/** Distância a partir da qual o tempo extra do modal entra por inteiro. */
+const FULL_OVERHEAD_KM = 100;
+
+/** Tempo extra proporcional: rotas urbanas curtas não pagam paradas de viagem longa. */
+function overheadFor(mode: TransportMode, distanceKm: number): number {
+  return MODE_PROFILES[mode].overheadMinutes * clamp(distanceKm / FULL_OVERHEAD_KM, 0, 1);
+}
+
+const roundTo5 = (minutes: number): number => Math.max(5, Math.round(minutes / 5) * 5);
+
 /**
- * Estima a duração (min, múltiplo de 5) a partir da distância.
+ * Estima a duração (min, múltiplo de 5, mínimo 5) a partir da distância.
  * @param distanceKm distância da rota; se `isRoadDistance` for false aplica o fator de desvio.
  */
 export function estimateDurationMinutes(distanceKm: number, mode: TransportMode, isRoadDistance = false): number {
   const p = MODE_PROFILES[mode];
   const d = isRoadDistance ? distanceKm : distanceKm * p.detourFactor;
-  const minutes = (d / p.speedKmh) * 60 + p.overheadMinutes;
-  return Math.max(5, Math.round(minutes / 5) * 5);
+  return roundTo5((d / p.speedKmh) * 60 + overheadFor(mode, d));
+}
+
+/**
+ * Duração a partir do tempo real de carro devolvido pelo OSRM, ajustada pelo modal
+ * (ônibus 1.2×, trem 1.1×) e pelo tempo extra proporcional.
+ */
+export function durationFromOsrm(osrmSeconds: number, distanceKm: number, mode: TransportMode): number {
+  if (!(osrmSeconds > 0)) return estimateDurationMinutes(distanceKm, mode, true);
+  return roundTo5((osrmSeconds / 60) * MODE_PROFILES[mode].osrmFactor + overheadFor(mode, distanceKm));
 }
 
 /** Caminho padrão quando nenhuma geometria é fornecida. */

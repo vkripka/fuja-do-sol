@@ -17,7 +17,7 @@ import type {
 } from '../engine/types';
 import { getRoute, type RouteResult } from '../services/routingService';
 import { createTripId, getPreferences, savePreferences, type SavedTrip, type UserPreferences } from '../services/storageService';
-import { dateKey, parseDateKey, parseTime } from '../utils/format';
+import { dateKey, nowRounded, parseDateKey, parseTime } from '../utils/format';
 
 export interface TripState {
   mode: TransportMode;
@@ -75,12 +75,13 @@ function quickEstimate(origin: Place, destination: Place, mode: TransportMode): 
 function initialState(): TripState {
   const origin = requireHub('rod-tiete');
   const destination = requireHub('rod-novo-rio');
+  const now = nowRounded(origin.tz);
   return {
     mode: 'bus',
     origin,
     destination,
-    date: todayIn(origin.tz),
-    time: '09:00',
+    date: now.date,
+    time: now.time,
     durationMinutes: quickEstimate(origin, destination, 'bus'),
     durationAuto: true,
     optimization: 'shade',
@@ -91,6 +92,8 @@ export function TripProvider({ children }: { children: ReactNode }) {
   const [trip, setTrip] = useState<TripState>(initialState);
   const [route, setRoute] = useState<RouteResult | null>(null);
   const [routeLoading, setRouteLoading] = useState(false);
+  // Incrementado a cada troca de rota para reaplicar a duração da rota real (em cache) mesmo sem mudança de chave.
+  const [routeNonce, setRouteNonce] = useState(0);
   const [seatPrefs, setSeatPrefs] = useState<SeatPreferences>({});
   const [preferences, setPreferences] = useState<UserPreferences>({
     optimization: 'shade',
@@ -114,7 +117,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Busca a geometria real sempre que origem/destino/modal mudam.
-  const routeKey = `${trip.mode}|${trip.origin.id}|${trip.destination.id}|${trip.waypoints?.length ?? 0}|${preferences.useOnlineServices}`;
+  const routeKey = `${trip.mode}|${trip.origin.id}|${trip.destination.id}|${trip.waypoints?.length ?? 0}|${preferences.useOnlineServices}|${routeNonce}`;
   useEffect(() => {
     let alive = true;
     setRoute(null);
@@ -170,9 +173,11 @@ export function TripProvider({ children }: { children: ReactNode }) {
   const patch = useCallback((p: Partial<TripState>) => setTrip((t) => ({ ...t, ...p })), []);
 
   const setPlaces = useCallback((origin: Place, destination: Place, extra: Partial<TripState> = {}) => {
+    setRouteNonce((n) => n + 1);
+    // Mudar a rota sempre volta para a duração automática: estimativa imediata,
+    // refinada quando a geometria real chegar (efeito de rota acima).
     setTrip((t) => {
       const mode = extra.mode ?? t.mode;
-      const auto = extra.durationAuto ?? t.durationAuto;
       return {
         ...t,
         origin,
@@ -180,7 +185,8 @@ export function TripProvider({ children }: { children: ReactNode }) {
         waypoints: undefined,
         presetId: undefined,
         ...extra,
-        durationMinutes: extra.durationMinutes ?? (auto ? quickEstimate(origin, destination, mode) : t.durationMinutes),
+        durationAuto: true,
+        durationMinutes: quickEstimate(origin, destination, mode),
       };
     });
   }, []);
@@ -195,24 +201,21 @@ export function TripProvider({ children }: { children: ReactNode }) {
     seatPrefs,
     preferences,
     suggestedDuration,
-    setMode: (mode) =>
-      setTrip((t) => ({
-        ...t,
-        mode,
-        waypoints: undefined,
-        presetId: undefined,
-        durationMinutes: t.durationAuto ? quickEstimate(t.origin, t.destination, mode) : t.durationMinutes,
-      })),
+    setMode: (mode) => setPlaces(trip.origin, trip.destination, { mode }),
     setOrigin: (p) => setPlaces(p, trip.destination),
     setDestination: (p) => setPlaces(trip.origin, p),
-    swap: () =>
+    swap: () => {
+      setRouteNonce((n) => n + 1);
       setTrip((t) => ({
         ...t,
         origin: t.destination,
         destination: t.origin,
         waypoints: t.waypoints ? [...t.waypoints].reverse() : undefined,
         presetId: undefined,
-      })),
+        durationAuto: true,
+        durationMinutes: quickEstimate(t.destination, t.origin, t.mode),
+      }));
+    },
     setDate: (date) => patch({ date }),
     setTime: (time) => patch({ time }),
     setDuration: (minutes) => patch({ durationMinutes: Math.max(5, Math.min(24 * 60, Math.round(minutes))), durationAuto: false }),

@@ -187,6 +187,8 @@ describe('Roteamento', () => {
     const r = await getRoute(SAO_PAULO, RIO, 'bus', { fetchImpl: f });
     expect(r.source).toBe('osrm');
     expect(r.distanceKm).toBe(432);
+    // 19000 s de carro × 1.2 (ônibus) + 15 min de paradas
+    expect(r.durationMinutes).toBe(395);
     expect(r.path[1].lat).toBeCloseTo(-23.19, 5);
     expect((f as jest.Mock).mock.calls[0][0]).toContain('router.project-osrm.org/route/v1/driving/-46.633300,-23.550500;-43.172900,-22.906800');
     // cache

@@ -7,7 +7,7 @@ import { Screen } from '../../src/components/Screen';
 import { ShareTicketCard, ticketShareText } from '../../src/components/ShareTicketCard';
 import { SolarCompassSVG } from '../../src/components/SolarCompassSVG';
 import { TimelineChart } from '../../src/components/TimelineChart';
-import { Card, InfoRow, LegendItem, PrimaryButton, SectionHeader, StatTile } from '../../src/components/ui';
+import { Card, Chip, InfoRow, LegendItem, PrimaryButton, SectionHeader, StatTile } from '../../src/components/ui';
 import { useTrip } from '../../src/context/TripContext';
 import { shortCode } from '../../src/data/hubs';
 import { exposureAtMinute, sideLabel } from '../../src/engine/exposureCalculator';
@@ -47,6 +47,7 @@ export default function ResultsScreen() {
   const { trip, analysis, seats } = t;
   const tz = trip.origin.tz;
   const [progress, setProgress] = useState(0);
+  const [showMap, setShowMap] = useState(false);
   const ticketRef: ViewRef = useRef(null);
   const contentW = Math.min(width, 720) - 32;
   const innerW = contentW - 32;
@@ -152,20 +153,32 @@ export default function ResultsScreen() {
             {formatZonedTime(new Date(analysis.input.departure.getTime() + analysis.durationMinutes * 60000), tz)}
           </Text>
         </View>
-        <RoutePreviewSVG
-          analysis={analysis}
-          progress={progress}
-          width={innerW}
-          height={Math.round(innerW * 0.62)}
-          originLabel={shortCode(trip.origin)}
-          destinationLabel={shortCode(trip.destination)}
-        />
-        <View style={styles.legend}>
-          <LegendItem color={colors.sunLeft} label="Sol à esquerda" />
-          <LegendItem color={colors.sunRight} label="Sol à direita" />
-          <LegendItem color={colors.sunFront} label="Frente/trás" />
-          <LegendItem color={colors.night} label="Noite / sol fraco" />
+        <View style={styles.mapToggle}>
+          <Chip
+            label={showMap ? 'Ocultar mapa' : 'Mostrar mapa da rota'}
+            icon={showMap ? 'eye-off-outline' : 'map-outline'}
+            selected={false}
+            onPress={() => setShowMap((v) => !v)}
+          />
         </View>
+        {showMap ? (
+          <View>
+            <RoutePreviewSVG
+              analysis={analysis}
+              progress={progress}
+              width={innerW}
+              height={Math.round(innerW * 0.62)}
+              originLabel={shortCode(trip.origin)}
+              destinationLabel={shortCode(trip.destination)}
+            />
+            <View style={styles.legend}>
+              <LegendItem color={colors.sunLeft} label="Sol à esquerda" />
+              <LegendItem color={colors.sunRight} label="Sol à direita" />
+              <LegendItem color={colors.sunFront} label="Frente/trás" />
+              <LegendItem color={colors.night} label="Noite / sol fraco" />
+            </View>
+          </View>
+        ) : null}
       </Card>
 
       <SectionHeader title="Linha do tempo solar" subtitle="⇄ = o sol troca de lado · ☀↑ nascer · ☀↓ pôr" />
@@ -253,7 +266,8 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', marginHorizontal: -4, marginBottom: 14 },
   status: { fontSize: 15, lineHeight: 21, marginTop: 10 },
   statusSub: { fontSize: 12, marginTop: 4, fontVariant: ['tabular-nums'] },
-  sliderLabels: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
+  sliderLabels: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+  mapToggle: { flexDirection: 'row', justifyContent: 'center', marginBottom: 2 },
   small: { fontSize: 12, fontVariant: ['tabular-nums'] },
   legend: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 },
 });

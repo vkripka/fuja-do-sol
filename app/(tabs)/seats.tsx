@@ -9,7 +9,7 @@ import { useTrip } from '../../src/context/TripContext';
 import { positionLabel } from '../../src/engine/seatRecommender';
 import type { SeatScore } from '../../src/engine/types';
 import { haptics } from '../../src/services/deviceServices';
-import { heatColor, useAppTheme } from '../../src/theme/colors';
+import { goldenColor, heatColor, useAppTheme } from '../../src/theme/colors';
 import { MODE_META, MODES } from '../../src/utils/format';
 
 export default function SeatsScreen() {
@@ -102,7 +102,7 @@ export default function SeatsScreen() {
           <Text style={[styles.legendText, { color: colors.textSecondary }]}>{colorBy === 'heat' ? 'Sombra' : 'Sem vista'}</Text>
           <View style={styles.ramp}>
             {Array.from({ length: 10 }, (_, i) => (
-              <View key={i} style={{ flex: 1, backgroundColor: heatColor(i * 11, scheme) }} />
+              <View key={i} style={{ flex: 1, backgroundColor: (colorBy === 'heat' ? heatColor : goldenColor)(i * 11, scheme) }} />
             ))}
           </View>
           <Text style={[styles.legendText, { color: colors.textSecondary }]}>{colorBy === 'heat' ? 'Muito sol' : 'Vista dourada'}</Text>
@@ -123,6 +123,9 @@ export default function SeatsScreen() {
             {current.uvBehindGlass > 0 ? ` (índice ~${current.uvBehindGlass.toFixed(1)} atrás do vidro)` : ''}
           </Text>
         </View>
+        {!current.seat.selectable ? (
+          <Text style={[styles.note, { color: colors.textMuted }]}>Assento do motorista: só para consulta — a recomendação considera os passageiros.</Text>
+        ) : null}
         {current.seat.overWing ? <Text style={[styles.note, { color: colors.textMuted }]}>Sobre a asa: a vista do horizonte fica parcialmente bloqueada.</Text> : null}
       </Card>
 

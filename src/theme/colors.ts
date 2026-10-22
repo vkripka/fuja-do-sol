@@ -1,7 +1,8 @@
 /** Tokens visuais iOS 18 (Solar Gold, Shade Indigo, Glass) com claro/escuro. */
 import { useColorScheme } from 'react-native';
+import type { Scheme } from './palette';
 
-export type Scheme = 'light' | 'dark';
+export { contrastText, goldenColor, heatColor, heatTextColor, mixHex, type Scheme } from './palette';
 
 export interface Palette {
   background: string;
@@ -83,39 +84,6 @@ export function paletteFor(scheme: Scheme): Palette {
 export function useAppTheme(): { scheme: Scheme; colors: Palette } {
   const scheme: Scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   return { scheme, colors: paletteFor(scheme) };
-}
-
-const hexToRgb = (h: string): [number, number, number] => [
-  parseInt(h.slice(1, 3), 16),
-  parseInt(h.slice(3, 5), 16),
-  parseInt(h.slice(5, 7), 16),
-];
-const rgbToHex = (r: number, g: number, b: number): string =>
-  `#${[r, g, b].map((v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0')).join('')}`;
-
-export function mixHex(a: string, b: string, t: number): string {
-  const x = hexToRgb(a);
-  const y = hexToRgb(b);
-  return rgbToHex(x[0] + (y[0] - x[0]) * t, x[1] + (y[1] - x[1]) * t, x[2] + (y[2] - x[2]) * t);
-}
-
-/** Rampa sequencial de um único matiz (laranja) para o mapa de calor 0..100. */
-const HEAT_RAMP: Record<Scheme, string[]> = {
-  light: ['#FDF0E4', '#F9C9A0', '#F29A5E', '#E2672A', '#B8460F'],
-  dark: ['#2E2620', '#5A3A22', '#8F4F22', '#C9652A', '#F2894A'],
-};
-
-export function heatColor(heat: number, scheme: Scheme): string {
-  const ramp = HEAT_RAMP[scheme];
-  const t = Math.max(0, Math.min(1, heat / 100)) * (ramp.length - 1);
-  const i = Math.min(ramp.length - 2, Math.floor(t));
-  return mixHex(ramp[i], ramp[i + 1], t - i);
-}
-
-/** Texto legível sobre a célula do mapa de calor. */
-export function heatTextColor(heat: number, scheme: Scheme): string {
-  if (scheme === 'dark') return heat > 70 ? '#1A1209' : '#F2F2F7';
-  return heat > 55 ? '#FFFFFF' : '#3B2412';
 }
 
 /** Gradiente do céu conforme a hora local (madrugada → aurora → dia → pôr do sol → noite). */

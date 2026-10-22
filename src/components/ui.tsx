@@ -1,6 +1,6 @@
 /** Kit de UI no estilo iOS 18: cartões de vidro, chips, controles segmentados e botões. */
 import Ionicons from '@expo/vector-icons/Ionicons';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { haptics } from '../services/deviceServices';
 import { useAppTheme } from '../theme/colors';
@@ -178,6 +178,48 @@ export function LegendItem({ color, label }: { color: string; label: string }) {
   );
 }
 
+/** Seção retrátil: só o cabeçalho fica visível até o usuário tocar nele. */
+export function Accordion({
+  title,
+  subtitle,
+  icon,
+  children,
+  initiallyOpen = false,
+}: {
+  title: string;
+  subtitle?: string;
+  icon: IconName;
+  children: ReactNode;
+  initiallyOpen?: boolean;
+}) {
+  const { colors } = useAppTheme();
+  const [open, setOpen] = useState(initiallyOpen);
+  return (
+    <Card padded={false}>
+      <Pressable
+        onPress={() => {
+          haptics.selection();
+          setOpen((v) => !v);
+        }}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        accessibilityLabel={title}
+        style={({ pressed }) => [styles.accordionHead, { opacity: pressed ? 0.7 : 1 }]}
+      >
+        <View style={[styles.infoIcon, { backgroundColor: `${colors.tint}22` }]}>
+          <Ionicons name={icon} size={18} color={colors.tint} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.infoTitle, { color: colors.text }]}>{title}</Text>
+          {subtitle ? <Text style={[styles.statCaption, { color: colors.textSecondary }]}>{subtitle}</Text> : null}
+        </View>
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textMuted} />
+      </Pressable>
+      {open ? <View style={[styles.accordionBody, { borderTopColor: colors.separator }]}>{children}</View> : null}
+    </Card>
+  );
+}
+
 export function InfoRow({ icon, title, body, tone }: { icon: IconName; title: string; body: string; tone?: string }) {
   const { colors } = useAppTheme();
   return (
@@ -239,6 +281,8 @@ const styles = StyleSheet.create({
   legendSwatch: { width: 10, height: 10, borderRadius: 3, marginRight: 6 },
   legendText: { fontSize: 12, fontWeight: '500' },
   infoRow: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 8 },
+  accordionHead: { flexDirection: 'row', alignItems: 'center', padding: 14, minHeight: 56 },
+  accordionBody: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: 16, paddingVertical: 8 },
   infoIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   infoTitle: { fontSize: 15, fontWeight: '600' },
   infoBody: { fontSize: 14, lineHeight: 19, marginTop: 2 },

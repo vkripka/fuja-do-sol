@@ -224,7 +224,7 @@ export interface Seat {
   y: number;
   /** Assento sobre a asa (avião). */
   overWing?: boolean;
-  /** false para o motorista. */
+  /** false = só consulta (ex.: motorista): aparece no mapa, mas nunca é recomendado. */
   selectable: boolean;
 }
 

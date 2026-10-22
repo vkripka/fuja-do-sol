@@ -7,7 +7,6 @@ import { PlaceSearchField } from '../../src/components/PlaceSearchField';
 import { Screen } from '../../src/components/Screen';
 import { useTrip } from '../../src/context/TripContext';
 import { PRESET_TRIPS } from '../../src/data/presetTrips';
-import { utcToZoned } from '../../src/engine/timezone';
 import { addToHistory } from '../../src/services/storageService';
 import { haptics } from '../../src/services/deviceServices';
 import { skyGradient, useAppTheme } from '../../src/theme/colors';
@@ -15,26 +14,29 @@ import {
   addDays,
   busSeatHint,
   dateChipLabel,
-  dateKey,
   formatDuration,
   formatKm,
   formatTime,
+  minutesBetween,
   MODE_META,
   MODES,
+  nowRounded,
   parseTime,
 } from '../../src/utils/format';
 
-const TIME_SHORTCUTS = ['08:00', '12:00', '16:00', '22:00'];
+const MORNING = '08:00';
+const AFTERNOON = '15:00';
 
 export default function SimulateScreen() {
   const { colors, scheme } = useAppTheme();
   const t = useTrip();
   const { trip, analysis, seats, route, routeLoading } = t;
   const tz = trip.origin.tz;
-  const now = utcToZoned(new Date(), tz);
-  const today = dateKey(now.year, now.month, now.day);
-  const days = Array.from({ length: 21 }, (_, i) => addDays(today, i));
+  const now = nowRounded(tz);
+  const today = now.date;
+  const days = Array.from({ length: 7 }, (_, i) => addDays(today, i));
   const { hour, minute } = parseTime(trip.time);
+  const isNow = trip.date === today && minutesBetween(trip.time, now.time) <= 5;
 
   const shiftTime = (deltaMin: number) => {
     const total = (((hour * 60 + minute + deltaMin) % 1440) + 1440) % 1440;
@@ -42,9 +44,14 @@ export default function SimulateScreen() {
   };
 
   const setNow = () => {
-    const rounded = Math.ceil((now.hour * 60 + now.minute) / 5) * 5;
     t.setDate(today);
-    t.setTime(formatTime(Math.floor(rounded / 60) % 24, rounded % 60));
+    t.setTime(now.time);
+  };
+
+  const tomorrowMorning = () => {
+    haptics.impact();
+    t.setDate(addDays(today, 1));
+    t.setTime(MORNING);
   };
 
   const openResults = () => {
@@ -133,7 +140,7 @@ export default function SimulateScreen() {
 
       <SectionHeader title="Quando" subtitle={`Horário local de ${trip.origin.city}`} />
       <Card>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+        <View style={styles.days}>
           {days.map((d) => {
             const l = dateChipLabel(d);
             const sel = d === trip.date;
@@ -151,33 +158,22 @@ export default function SimulateScreen() {
               >
                 <Text style={[styles.dayWeek, { color: sel ? '#1A1000' : colors.textSecondary }]}>{d === today ? 'Hoje' : l.weekday}</Text>
                 <Text style={[styles.dayNum, { color: sel ? '#1A1000' : colors.text }]}>{l.day}</Text>
-                <Text style={[styles.dayWeek, { color: sel ? '#1A1000' : colors.textSecondary }]}>{l.month}</Text>
               </Pressable>
             );
           })}
-        </ScrollView>
+        </View>
 
         <View style={styles.timeRow}>
-          <Stepper label="−1h" onPress={() => shiftTime(-60)} />
-          <Stepper label="−15" onPress={() => shiftTime(-15)} />
+          <Stepper label="−30m" onPress={() => shiftTime(-30)} />
           <Text style={[styles.time, { color: colors.text }]} accessibilityLabel={`Partida às ${trip.time}`}>
             {trip.time}
           </Text>
-          <Stepper label="+15" onPress={() => shiftTime(15)} />
-          <Stepper label="+1h" onPress={() => shiftTime(60)} />
+          <Stepper label="+30m" onPress={() => shiftTime(30)} />
         </View>
         <View style={styles.chips}>
-          <Chip label="Agora" icon="flash" onPress={setNow} />
-          <Chip
-            label="Amanhã 08:00"
-            onPress={() => {
-              t.setDate(addDays(today, 1));
-              t.setTime('08:00');
-            }}
-          />
-          {TIME_SHORTCUTS.map((s) => (
-            <Chip key={s} label={s} selected={trip.time === s} onPress={() => t.setTime(s)} />
-          ))}
+          <Chip label="Agora" icon="flash" selected={isNow} onPress={setNow} />
+          <Chip label={`Manhã ${MORNING}`} selected={!isNow && trip.time === MORNING} onPress={() => t.setTime(MORNING)} />
+          <Chip label={`Tarde ${AFTERNOON}`} selected={!isNow && trip.time === AFTERNOON} onPress={() => t.setTime(AFTERNOON)} />
         </View>
 
         <View style={[styles.durationRow, { borderTopColor: colors.separator }]}>
@@ -185,7 +181,11 @@ export default function SimulateScreen() {
             <Text style={[styles.label, { color: colors.textMuted }]}>DURAÇÃO</Text>
             <Text style={[styles.duration, { color: colors.text }]}>{formatDuration(trip.durationMinutes)}</Text>
             <Text style={[styles.hint, { color: colors.textSecondary }]}>
-              {trip.durationAuto ? 'Calculada pela distância e velocidade média' : `Sugerido: ${formatDuration(t.suggestedDuration)}`}
+              {trip.durationAuto
+                ? routeLoading
+                  ? 'Estimativa rápida — refinando com a rota real…'
+                  : 'Calculada pela rota e pelo meio de transporte'
+                : `Sugerido: ${formatDuration(t.suggestedDuration)}`}
             </Text>
           </View>
           <Stepper label="−15" onPress={() => t.setDuration(trip.durationMinutes - 15)} />
@@ -208,20 +208,37 @@ export default function SimulateScreen() {
         onChange={t.setOptimization}
       />
 
+      {/* O card inteiro abre o Raio-X; o botão noturno fica fora da área tocável (sem botões aninhados). */}
       <LinearGradient colors={sky} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.verdict}>
-        <Text style={styles.verdictKicker}>VEREDITO IMEDIATO</Text>
-        <Text style={styles.verdictTitle}>{analysis.verdict}</Text>
-        <Text style={styles.verdictBody}>{analysis.verdictDetail}</Text>
-        <View style={styles.verdictStats}>
-          <VerdictStat label="Melhor lugar" value={seats.best.seat.label} />
-          <VerdictStat label="Na sombra" value={shade !== null ? `${shade}%` : '—'} />
-          <VerdictStat label="Viradas" value={String(analysis.flips.length)} />
-        </View>
-        {trip.mode === 'bus' && side !== 'either' ? <Text style={styles.verdictHint}>Ônibus: {busSeatHint(side)}</Text> : null}
+        <Pressable
+          onPress={openResults}
+          accessibilityRole="button"
+          accessibilityLabel={`${analysis.verdict}. Abrir Raio-X da viagem`}
+          style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
+        >
+          <View style={styles.verdictHead}>
+            <Text style={styles.verdictKicker}>VEREDITO IMEDIATO</Text>
+            <Ionicons name="chevron-forward" size={18} color="#FFFFFFCC" />
+          </View>
+          <Text style={styles.verdictTitle}>{analysis.verdict}</Text>
+          <Text style={styles.verdictBody}>{analysis.verdictDetail}</Text>
+          {analysis.daylightMinutes > 0 ? (
+            <View style={styles.verdictStats}>
+              <VerdictStat label="Melhor lugar" value={seats.best.seat.label} />
+              <VerdictStat label="Na sombra" value={shade !== null ? `${shade}%` : '—'} />
+              <VerdictStat label="Viradas" value={String(analysis.flips.length)} />
+            </View>
+          ) : null}
+          {trip.mode === 'bus' && side !== 'either' ? <Text style={styles.verdictHint}>Ônibus: {busSeatHint(side)}</Text> : null}
+        </Pressable>
+        {analysis.daylightMinutes === 0 ? (
+          <Pressable onPress={tomorrowMorning} accessibilityRole="button" accessibilityLabel="Simular amanhã às 08:00" style={styles.nightButton}>
+            <Ionicons name="sunny" size={16} color="#1A1000" />
+            <Text style={styles.nightButtonText}>Simular amanhã às 08:00</Text>
+          </Pressable>
+        ) : null}
       </LinearGradient>
       <PrimaryButton label="Abrir Raio-X da viagem" icon="analytics" onPress={openResults} />
-      <View style={{ height: 10 }} />
-      <PrimaryButton label="Ver mapa de assentos" icon="grid" variant="tinted" onPress={() => router.push('/seats')} />
     </Screen>
   );
 }
@@ -263,11 +280,12 @@ const styles = StyleSheet.create({
   presetTitle: { fontSize: 16, fontWeight: '700' },
   presetSub: { fontSize: 13, marginTop: 2 },
   presetMeta: { fontSize: 12, marginTop: 6 },
-  day: { width: 56, borderRadius: 14, alignItems: 'center', paddingVertical: 8, marginRight: 8 },
+  days: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 },
+  day: { flex: 1, borderRadius: 12, alignItems: 'center', paddingVertical: 7, marginHorizontal: 2 },
   dayWeek: { fontSize: 11, fontWeight: '600' },
   dayNum: { fontSize: 20, fontWeight: '700', marginVertical: 1 },
-  timeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  time: { fontSize: 40, fontWeight: '700', fontVariant: ['tabular-nums'], letterSpacing: -1 },
+  timeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  time: { fontSize: 40, fontWeight: '700', fontVariant: ['tabular-nums'], letterSpacing: -1, marginHorizontal: 18 },
   stepper: { minWidth: 46, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, marginLeft: 6 },
   stepperText: { fontSize: 14, fontWeight: '700' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 12 },
@@ -276,6 +294,19 @@ const styles = StyleSheet.create({
   duration: { fontSize: 24, fontWeight: '700', marginTop: 2 },
   hint: { fontSize: 12, marginTop: 2 },
   verdict: { borderRadius: 24, padding: 20, marginTop: 18, marginBottom: 14 },
+  verdictHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  nightButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFD66B',
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    minHeight: 36,
+    marginTop: 14,
+    gap: 6,
+  },
+  nightButtonText: { color: '#1A1000', fontSize: 14, fontWeight: '700' },
   verdictKicker: { color: '#FFFFFFCC', fontSize: 12, fontWeight: '800', letterSpacing: 1 },
   verdictTitle: { color: '#FFFFFF', fontSize: 26, fontWeight: '800', marginTop: 6, letterSpacing: -0.5, textShadowColor: '#00000033', textShadowRadius: 6 },
   verdictBody: { color: '#FFFFFFEE', fontSize: 15, marginTop: 8, lineHeight: 20 },

@@ -10,7 +10,7 @@ export const KEYS = {
 } as const;
 
 export const MAX_FAVORITES = 50;
-export const MAX_HISTORY = 20;
+export const MAX_HISTORY = 5;
 
 export interface SavedTrip {
   id: string;

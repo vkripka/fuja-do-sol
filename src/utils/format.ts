@@ -1,6 +1,7 @@
 /** Formatação e rótulos em pt-BR. */
 import type { ComponentProps } from 'react';
 import type Ionicons from '@expo/vector-icons/Ionicons';
+import { utcToZoned, type TimeZoneId } from '../engine/timezone';
 import type { LateralSide, SunSide, TransportMode } from '../engine/types';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -94,4 +95,17 @@ export function longDate(key: string): string {
 /** Sugestão de poltronas do ônibus para o lado (ímpares = janelas). */
 export function busSeatHint(side: LateralSide): string {
   return side === 'right' ? 'janelas ímpares 3, 7, 11, 15…' : 'janelas ímpares 1, 5, 9, 13…';
+}
+
+/** Data e horário "agora" no fuso dado, com o horário arredondado para cima em 5 min. */
+export function nowRounded(tz: TimeZoneId, now: Date = new Date()): { date: string; time: string } {
+  const p = utcToZoned(new Date(Math.ceil(now.getTime() / 300000) * 300000), tz);
+  return { date: dateKey(p.year, p.month, p.day), time: formatTime(p.hour, p.minute) };
+}
+
+/** Minutos entre dois horários HH:MM (ignora a data). */
+export function minutesBetween(a: string, b: string): number {
+  const x = parseTime(a);
+  const y = parseTime(b);
+  return Math.abs(x.hour * 60 + x.minute - (y.hour * 60 + y.minute));
 }

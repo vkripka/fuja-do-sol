@@ -4,7 +4,7 @@
  */
 import Svg, { Circle, G, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
 import type { CabinLayout, SeatRecommendation, SeatScore } from '../engine/types';
-import { heatColor, heatTextColor, useAppTheme, type Palette, type Scheme } from '../theme/colors';
+import { contrastText, goldenColor, heatColor, useAppTheme, type Palette, type Scheme } from '../theme/colors';
 
 export interface SeatMapProps {
   recommendation: SeatRecommendation;
@@ -14,6 +14,15 @@ export interface SeatMapProps {
   /** Colore pela vista dourada em vez do calor. */
   goldenView?: boolean;
 }
+
+/** Rótulos curtos dos lugares do carro (o nome completo aparece no card de detalhes). */
+const CAR_LABELS: Record<string, string> = {
+  'car-driver': 'MOT',
+  'car-front-right': 'CAR',
+  'car-rear-left': 'T.E.',
+  'car-rear-center': 'T.C.',
+  'car-rear-right': 'T.D.',
+};
 
 const SEAT_SIZE: Record<CabinLayout['mode'], number> = { bus: 0.15, plane: 0.105, car: 0.2, train: 0.15, boat: 0.12 };
 
@@ -127,15 +136,15 @@ export function SeatMapSVG({ recommendation, selectedId, onSelect, width, golden
           const cx = seat.x * W;
           const cy = seat.y * H;
           const value = goldenView ? sc.goldenView : sc.heat;
-          const fill = goldenView ? heatColor(value, scheme) : heatColor(value, scheme);
+          const fill = goldenView ? goldenColor(value, scheme) : heatColor(value, scheme);
           const isBest = seat.id === bestId;
           const isSel = seat.id === selectedId;
           const w = layout.mode === 'car' ? s * 1.15 : s;
-          const label = layout.mode === 'car' ? (seat.position === 'driver' ? 'MOT' : seat.label.split(' ')[0].slice(0, 4).toUpperCase()) : seat.label;
+          const label = layout.mode === 'car' ? CAR_LABELS[seat.id] ?? seat.label : seat.label;
           return (
             <G
               key={seat.id}
-              onPress={seat.selectable && onSelect ? () => onSelect(sc) : undefined}
+              onPress={onSelect ? () => onSelect(sc) : undefined}
               accessibilityLabel={`${seat.label}, calor ${sc.heat} de 100`}
             >
               {/* área de toque maior que a marca */}
@@ -146,7 +155,7 @@ export function SeatMapSVG({ recommendation, selectedId, onSelect, width, golden
                 width={w}
                 height={s * 0.92}
                 rx={s * 0.22}
-                fill={seat.selectable ? fill : colors.chipBackground}
+                fill={fill}
                 stroke={isSel ? colors.text : isBest ? colors.gold : scheme === 'dark' ? '#00000066' : '#FFFFFF'}
                 strokeWidth={isSel ? 3 : isBest ? 3 : 1}
               />
@@ -156,7 +165,7 @@ export function SeatMapSVG({ recommendation, selectedId, onSelect, width, golden
                 y={cy + s * 0.1}
                 fontSize={Math.max(8, Math.min(13, s * 0.36))}
                 fontWeight="700"
-                fill={seat.selectable ? heatTextColor(value, scheme) : colors.textMuted}
+                fill={contrastText(fill)}
                 textAnchor="middle"
               >
                 {label}
