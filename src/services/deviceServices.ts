@@ -11,7 +11,7 @@ import { captureRef } from 'react-native-view-shot';
 import type { ComponentRef, RefObject } from 'react';
 import { formatZonedTime, type TimeZoneId } from '../engine/timezone';
 import type { ExposureWindow, TripAnalysisResult } from '../engine/types';
-import { sideName } from '../utils/format';
+import { STRINGS, type Lang } from '../i18n/strings';
 
 const isWeb = Platform.OS === 'web';
 
@@ -54,13 +54,19 @@ export function installNotificationHandler(): void {
 
 export type AlertScheduleResult = { status: 'scheduled'; count: number } | { status: 'none' | 'denied' | 'unsupported' };
 
-function alertBody(w: ExposureWindow, mode: TripAnalysisResult['input']['mode'], tz: TimeZoneId): string {
-  const where = w.side === 'front' ? 'pelo para-brisa' : `na janela da ${sideName(w.side, mode)}`;
-  return `Sol forte ${where} das ${formatZonedTime(w.startTime, tz)} às ${formatZonedTime(w.endTime, tz)}. Feche a cortina ou mude de lado.`;
+function alertBody(w: ExposureWindow, mode: TripAnalysisResult['input']['mode'], tz: TimeZoneId, lang: Lang): string {
+  const tx = STRINGS[lang];
+  const where = w.side === 'front' ? tx.notifications.windshield : tx.notifications.window(tx.sideName(w.side, mode));
+  return tx.notifications.body(where, formatZonedTime(w.startTime, tz), formatZonedTime(w.endTime, tz));
 }
 
 /** Agenda lembretes locais "Hora de fechar a cortina" antes de cada janela de sol forte. */
-export async function scheduleCurtainAlerts(analysis: TripAnalysisResult, tz: TimeZoneId, leadMinutes = 5): Promise<AlertScheduleResult> {
+export async function scheduleCurtainAlerts(
+  analysis: TripAnalysisResult,
+  tz: TimeZoneId,
+  leadMinutes = 5,
+  lang: Lang = 'pt',
+): Promise<AlertScheduleResult> {
   if (isWeb) return { status: 'unsupported' };
   const now = Date.now();
   const upcoming = analysis.curtainAlerts.filter((w) => w.startTime.getTime() - leadMinutes * 60000 > now + 30000).slice(0, 12);
@@ -70,7 +76,7 @@ export async function scheduleCurtainAlerts(analysis: TripAnalysisResult, tz: Ti
     if (!perm.granted) return { status: 'denied' };
     for (const w of upcoming) {
       await Notifications.scheduleNotificationAsync({
-        content: { title: '☀️ Hora de fechar a cortina', body: alertBody(w, analysis.input.mode, tz) },
+        content: { title: STRINGS[lang].notifications.title, body: alertBody(w, analysis.input.mode, tz, lang) },
         trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(w.startTime.getTime() - leadMinutes * 60000) },
       });
     }
@@ -83,11 +89,11 @@ export async function scheduleCurtainAlerts(analysis: TripAnalysisResult, tz: Ti
 /** Captura o cartão como imagem e abre o compartilhamento nativo; fallback para texto. */
 export type ViewRef = RefObject<ComponentRef<typeof View> | null>;
 
-export async function shareTicket(ref: ViewRef, fallbackText: string): Promise<void> {
+export async function shareTicket(ref: ViewRef, fallbackText: string, dialogTitle = STRINGS.pt.ticket.dialogTitle): Promise<void> {
   try {
     if (!isWeb && ref.current && (await Sharing.isAvailableAsync())) {
       const uri = await captureRef(ref as unknown as Parameters<typeof captureRef>[0], { format: 'png', quality: 1, result: 'tmpfile' });
-      await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Compartilhar Bilhete de Sombra', UTI: 'public.png' });
+      await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle, UTI: 'public.png' });
       return;
     }
   } catch {

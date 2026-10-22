@@ -5,6 +5,7 @@
 import Svg, { Circle, Defs, G, Line, Path, Polygon, RadialGradient, Stop, Text as SvgText } from 'react-native-svg';
 import { cosD, normalizeSigned, sinD } from '../engine/math';
 import type { TransportMode } from '../engine/types';
+import { useI18n } from '../i18n';
 import { useAppTheme } from '../theme/colors';
 
 export interface SolarCompassProps {
@@ -16,12 +17,7 @@ export interface SolarCompassProps {
   size?: number;
 }
 
-const CARDINALS: Array<[number, string]> = [
-  [0, 'N'],
-  [90, 'L'],
-  [180, 'S'],
-  [270, 'O'],
-];
+const CARDINAL_BEARINGS = [0, 90, 180, 270];
 
 /** Silhueta do veículo (apontando para cima) centrada na origem, ~ 40x80 unidades. */
 function vehiclePath(mode: TransportMode): string {
@@ -41,6 +37,7 @@ function vehiclePath(mode: TransportMode): string {
 
 export function SolarCompassSVG({ heading, sunAzimuth, sunElevation, isUp, mode, size = 280 }: SolarCompassProps) {
   const { colors, scheme } = useAppTheme();
+  const { s: i18n, lang } = useI18n();
   const c = size / 2;
   const R = c - 18;
   const rel = normalizeSigned(sunAzimuth - heading);
@@ -77,7 +74,7 @@ export function SolarCompassSVG({ heading, sunAzimuth, sunElevation, isUp, mode,
     : [];
 
   return (
-    <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} accessibilityLabel="Bússola solar">
+    <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} accessibilityLabel={lang === 'en' ? 'Solar compass' : 'Bússola solar'}>
       <Defs>
         <RadialGradient id="sunGlow" cx="50%" cy="50%" r="50%">
           <Stop offset="0%" stopColor="#FFE58A" stopOpacity="1" />
@@ -110,7 +107,8 @@ export function SolarCompassSVG({ heading, sunAzimuth, sunElevation, isUp, mode,
           />
         );
       })}
-      {CARDINALS.map(([b, label]) => {
+      {CARDINAL_BEARINGS.map((b, ci) => {
+        const label = i18n.cardinals[ci];
         const a = b - heading;
         return (
           <SvgText

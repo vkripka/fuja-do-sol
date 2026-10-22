@@ -1,5 +1,8 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useCallback, useState } from 'react';
+import { View } from 'react-native';
+import { LaunchSplash } from '../src/components/LaunchSplash';
 import { TripProvider } from '../src/context/TripContext';
 import { installNotificationHandler } from '../src/services/deviceServices';
 import { useAppTheme } from '../src/theme/colors';
@@ -8,6 +11,8 @@ installNotificationHandler();
 
 export default function RootLayout() {
   const { scheme, colors } = useAppTheme();
+  const [showSplash, setShowSplash] = useState(true);
+  const hideSplash = useCallback(() => setShowSplash(false), []);
   const base = scheme === 'dark' ? DarkTheme : DefaultTheme;
   const theme = {
     ...base,
@@ -16,9 +21,12 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={theme}>
       <TripProvider>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(tabs)" />
-        </Stack>
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(tabs)" />
+          </Stack>
+          {showSplash ? <LaunchSplash onDone={hideSplash} /> : null}
+        </View>
         <StatusBar style="auto" />
       </TripProvider>
     </ThemeProvider>

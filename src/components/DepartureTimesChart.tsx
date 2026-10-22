@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View, type GestureResponderEvent } from 'react-native';
 import Svg, { Circle, G, Path, Text as SvgText } from 'react-native-svg';
 import type { TimeOptimizationResult, TimeSlotSimulation } from '../engine/types';
+import { useI18n } from '../i18n';
 import { useAppTheme } from '../theme/colors';
 import { formatTime } from '../utils/format';
 import { LegendItem } from './ui';
@@ -24,6 +25,7 @@ export function DepartureTimesChart({
   onSelect?: (slot: TimeSlotSimulation) => void;
 }) {
   const { colors } = useAppTheme();
+  const tx = useI18n().s.optimizer;
   const [hover, setHover] = useState<number | null>(null);
   const slots = result.slots;
   const top = 18;
@@ -47,11 +49,11 @@ export function DepartureTimesChart({
   return (
     <View>
       <View style={styles.legend}>
-        <LegendItem color={colors.sunLeft} label="Calor no lado certo" />
-        <LegendItem color={colors.night} label="Trajeto noturno" />
-        <LegendItem color={colors.gold} label="● Golden hour" />
+        <LegendItem color={colors.sunLeft} label={tx.legendHeat} />
+        <LegendItem color={colors.night} label={tx.legendNight} />
+        <LegendItem color={colors.gold} label={tx.legendGolden} />
       </View>
-      <Pressable onPress={press} accessibilityRole="adjustable" accessibilityLabel="Gráfico de horários de partida. Toque numa barra para escolher.">
+      <Pressable onPress={press} accessibilityRole="adjustable" accessibilityLabel={tx.chartA11y}>
         <Svg width={width} height={height}>
           {slots.map((s, i) => {
             const heat = 100 - s.comfortScore;
@@ -101,10 +103,8 @@ export function DepartureTimesChart({
       <View style={[styles.tooltip, { backgroundColor: colors.chipBackground }]}>
         <Text style={[styles.tooltipText, { color: shown ? colors.text : colors.textSecondary }]}>
           {shown
-            ? `Saída ${formatTime(shown.hour, shown.minute)}  ·  conforto ${shown.comfortScore}/100  ·  calor no pior lado ${shown.heatScore}/100${
-                shown.goldenScore > 0 ? `  ·  golden ${shown.goldenScore}/100` : ''
-              }`
-            : 'Toque numa barra para comparar. ★ = Horário Campeão de Sombra.'}
+            ? tx.tooltip(formatTime(shown.hour, shown.minute), shown.comfortScore, shown.heatScore, shown.goldenScore)
+            : tx.tooltipIdle}
         </Text>
       </View>
     </View>

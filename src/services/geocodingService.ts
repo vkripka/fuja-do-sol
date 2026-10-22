@@ -4,7 +4,7 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { HUBS, type Place, type PlaceKind } from '../data/hubs';
-import { haversineKm } from '../engine/geodesic';
+import { cumulativeDistances, haversineKm, pointAlongPath } from '../engine/geodesic';
 import { guessTimeZone } from '../engine/timezone';
 import type { Coordinates } from '../engine/types';
 import { APP_USER_AGENT, fetchJson, type FetchLike } from './http';
@@ -78,15 +78,25 @@ export function scoreMatch(keys: readonly string[], q: string): number {
   return best;
 }
 
-export function searchOffline(query: string, limit = 8): Place[] {
+/** Resultados offline com a pontuação de relevância (100 = nome idêntico). */
+export function searchOfflineScored(query: string, limit = 8): Array<{ place: Place; score: number }> {
   const q = normalizeText(query);
   if (!q) return [];
-  return INDEX.map(({ place, keys }) => ({ place, s: scoreMatch(keys, q) }))
-    .filter((r) => r.s > 0)
-    .sort((a, b) => b.s + KIND_BOOST[b.place.kind] - (a.s + KIND_BOOST[a.place.kind]) || a.place.name.localeCompare(b.place.name))
-    .slice(0, limit)
-    .map((r) => r.place);
+  return INDEX.map(({ place, keys }) => ({ place, score: scoreMatch(keys, q) }))
+    .filter((r) => r.score > 0)
+    .sort(
+      (a, b) =>
+        b.score + KIND_BOOST[b.place.kind] - (a.score + KIND_BOOST[a.place.kind]) || a.place.name.localeCompare(b.place.name),
+    )
+    .slice(0, limit);
 }
+
+export function searchOffline(query: string, limit = 8): Place[] {
+  return searchOfflineScored(query, limit).map((r) => r.place);
+}
+
+/** Pontuação a partir da qual o resultado offline é considerado exato (dispensa a busca online). */
+export const EXACT_MATCH_SCORE = 90;
 
 export function nearestHub(coords: Coordinates, maxKm = 50): { place: Place; distanceKm: number } | null {
   let best: { place: Place; distanceKm: number } | null = null;
@@ -181,23 +191,33 @@ export interface GeocodeOptions {
   timeoutMs?: number;
   limit?: number;
   online?: boolean;
+  /** Idioma dos nomes devolvidos pelo Nominatim. */
+  language?: 'pt' | 'en';
 }
+
+const ACCEPT_LANGUAGE = { pt: 'pt-BR,pt;q=0.9,en;q=0.5', en: 'en-US,en;q=0.9' } as const;
 
 export async function searchOnline(query: string, opts: GeocodeOptions = {}): Promise<Place[]> {
   const q = normalizeText(query);
   if (q.length < 3) return [];
+  const lang = opts.language ?? 'pt';
+  // chave sem prefixo em português mantém compatível o cache já salvo
+  const key = lang === 'pt' ? q : `${lang}|${q}`;
   await loadPersistentCache();
-  const cached = memoryCache.get(q);
+  const cached = memoryCache.get(key);
   if (cached) return cached;
-  const url = `${NOMINATIM_URL}?format=jsonv2&addressdetails=1&limit=${opts.limit ?? 6}&accept-language=pt-BR&q=${encodeURIComponent(query.trim())}`;
+  const acceptLanguage = ACCEPT_LANGUAGE[lang];
+  const url = `${NOMINATIM_URL}?format=jsonv2&addressdetails=1&limit=${opts.limit ?? 6}&accept-language=${encodeURIComponent(
+    acceptLanguage,
+  )}&q=${encodeURIComponent(query.trim())}`;
   const data = await fetchJson<NominatimResult[]>(url, {
     fetchImpl: opts.fetchImpl,
     timeoutMs: opts.timeoutMs ?? 4500,
-    headers: { 'User-Agent': APP_USER_AGENT, Accept: 'application/json', 'Accept-Language': 'pt-BR' },
+    headers: { 'User-Agent': APP_USER_AGENT, Accept: 'application/json', 'Accept-Language': acceptLanguage },
   });
   const places = (Array.isArray(data) ? data : []).map(placeFromNominatim).filter((p): p is Place => p !== null);
-  memoryCache.delete(q);
-  memoryCache.set(q, places);
+  memoryCache.delete(key);
+  memoryCache.set(key, places);
   void savePersistentCache();
   return places;
 }
@@ -208,11 +228,16 @@ export interface SearchResult {
   error?: string;
 }
 
-/** Offline primeiro; completa com Nominatim quando há poucos resultados locais. */
+/**
+ * Offline primeiro e, com 3+ letras, sempre completa com o Nominatim (qualquer cidade,
+ * endereço ou ponto turístico do mundo) — exceto quando já há um resultado offline exato.
+ */
 export async function searchPlaces(query: string, opts: GeocodeOptions = {}): Promise<SearchResult> {
   const limit = opts.limit ?? 8;
-  const offline = searchOffline(query, limit);
-  if (opts.online === false || normalizeText(query).length < 3 || offline.length >= Math.min(limit, 5)) {
+  const scored = searchOfflineScored(query, limit);
+  const offline = scored.map((r) => r.place);
+  const exact = scored.length > 0 && scored[0].score >= EXACT_MATCH_SCORE;
+  if (opts.online === false || normalizeText(query).length < 3 || exact) {
     return { results: offline, source: 'offline' };
   }
   try {
@@ -229,12 +254,12 @@ export async function searchPlaces(query: string, opts: GeocodeOptions = {}): Pr
 }
 
 /** Cria um Place a partir de coordenadas do GPS, nomeado pelo hub mais próximo. */
-export function placeFromCoordinates(coords: Coordinates): Place {
+export function placeFromCoordinates(coords: Coordinates, lang: 'pt' | 'en' = 'pt'): Place {
   const near = nearestHub(coords, 40);
-  const label = near ? `Perto de ${near.place.city}` : `${coords.lat.toFixed(3)}, ${coords.lon.toFixed(3)}`;
+  const label = near ? `${lang === 'en' ? 'Near' : 'Perto de'} ${near.place.city}` : `${coords.lat.toFixed(3)}, ${coords.lon.toFixed(3)}`;
   return {
     id: `gps-${coords.lat.toFixed(4)},${coords.lon.toFixed(4)}`,
-    name: 'Minha localização',
+    name: lang === 'en' ? 'My location' : 'Minha localização',
     city: label,
     region: near?.place.region,
     country: near?.place.country ?? '',
@@ -244,4 +269,51 @@ export function placeFromCoordinates(coords: Coordinates): Place {
     tz: near?.place.tz ?? guessTimeZone(coords),
     source: 'gps',
   };
+}
+
+export interface RouteLandmark {
+  place: Place;
+  /** Posição ao longo da rota (0..1). */
+  fraction: number;
+}
+
+const CITY_HUBS = HUBS.filter((p) => p.kind === 'city');
+
+/**
+ * Até `max` cidades conhecidas ao longo da rota (sem repetir a cidade de origem/destino),
+ * para dar contexto geográfico ao mapa.
+ */
+export function routeLandmarks(path: readonly Coordinates[], max = 4): RouteLandmark[] {
+  if (path.length < 2 || max <= 0) return [];
+  const cum = cumulativeDistances(path);
+  const total = cum[cum.length - 1];
+  if (total < 1) return [];
+  const radius = Math.min(60, Math.max(8, total * 0.08));
+  const endpointCities = new Set(
+    [path[0], path[path.length - 1]]
+      .map((p) => nearestHub(p, 30)?.place.city)
+      .filter((c): c is string => !!c),
+  );
+  const found: RouteLandmark[] = [];
+  const samples = 16;
+  for (let k = 1; k < samples; k++) {
+    const fraction = k / samples;
+    const point = pointAlongPath(path, cum, fraction * total).point;
+    let best: Place | null = null;
+    let bestD = radius;
+    for (const c of CITY_HUBS) {
+      const d = haversineKm(point, c.coords);
+      if (d < bestD) {
+        best = c;
+        bestD = d;
+      }
+    }
+    if (!best || endpointCities.has(best.city) || found.some((f) => f.place.id === best.id)) continue;
+    found.push({ place: best, fraction });
+  }
+  if (found.length <= max) return found;
+  // distribui uniformemente ao longo da rota
+  return Array.from({ length: max }, (_, i) => found[Math.round((i * (found.length - 1)) / (max - 1 || 1))]).filter(
+    (f, i, arr) => arr.findIndex((x) => x.place.id === f.place.id) === i,
+  );
 }

@@ -7,12 +7,15 @@ import { Card, PrimaryButton, SectionHeader } from '../../src/components/ui';
 import { useTrip } from '../../src/context/TripContext';
 import { optimizeDepartureTime } from '../../src/engine/timeOptimizer';
 import type { TimeSlotSimulation } from '../../src/engine/types';
+import { useI18n } from '../../src/i18n';
 import { haptics } from '../../src/services/deviceServices';
 import { useAppTheme } from '../../src/theme/colors';
-import { formatDuration, formatTime, sideName } from '../../src/utils/format';
+import { formatDuration, formatTime } from '../../src/utils/format';
 
 export default function OptimizerScreen() {
   const { colors } = useAppTheme();
+  const { s } = useI18n();
+  const tx = s.optimizer;
   const { width } = useWindowDimensions();
   const t = useTrip();
   const { trip, analysis } = t;
@@ -20,83 +23,82 @@ export default function OptimizerScreen() {
   const [showTable, setShowTable] = useState(false);
   const innerW = Math.min(width, 720) - 64;
 
-  const result = useMemo(
-    () => optimizeDepartureTime(analysis.input, { slots: 24, timeZone: trip.origin.tz }),
-    [analysis.input, trip.origin.tz],
-  );
+  const result = useMemo(() => optimizeDepartureTime(analysis.input, { slots: 24, timeZone: trip.origin.tz }), [analysis.input, trip.origin.tz]);
   const shadeChamp = result.bestDaytimeShade ?? result.bestShade;
   const goldenChamp = result.bestGolden;
 
-  const apply = (s: TimeSlotSimulation, optimization?: 'shade' | 'golden') => {
+  const apply = (slot: TimeSlotSimulation, optimization?: 'shade' | 'golden') => {
     haptics.success();
-    t.setTime(formatTime(s.hour, s.minute));
+    t.setTime(formatTime(slot.hour, slot.minute));
     if (optimization) t.setOptimization(optimization);
   };
 
   return (
-    <Screen title="Melhor Horário" subtitle={`E se você sair em outro horário? ${trip.origin.city} → ${trip.destination.city}, ${formatDuration(trip.durationMinutes)}`}>
+    <Screen title={tx.title} subtitle={tx.subtitle(trip.origin.city, trip.destination.city, formatDuration(trip.durationMinutes))}>
       <Champion
         icon="umbrella"
         tone={colors.shade}
-        kicker="HORÁRIO CAMPEÃO DE SOMBRA"
-        title={`Saída às ${formatTime(shadeChamp.hour, shadeChamp.minute)}`}
+        kicker={tx.shadeKicker}
+        title={tx.departAt(formatTime(shadeChamp.hour, shadeChamp.minute))}
         body={
           shadeChamp.shadeSide === 'either'
-            ? `Conforto ${shadeChamp.comfortScore}/100 em qualquer lado.`
-            : `Sentando na ${sideName(shadeChamp.shadeSide, trip.mode)}: conforto ${shadeChamp.comfortScore}/100, sol direto por ~${shadeChamp.sunlitMinutes} min no pior lado.`
+            ? tx.champEither(shadeChamp.comfortScore)
+            : tx.champSide(s.sideName(shadeChamp.shadeSide, trip.mode), shadeChamp.comfortScore, shadeChamp.sunlitMinutes)
         }
+        applyLabel={tx.applyThis}
         onApply={() => apply(shadeChamp, 'shade')}
       />
       {result.bestShade.nightFraction > 0.5 && result.bestDaytimeShade ? (
-        <Text style={[styles.note, { color: colors.textSecondary }]}>
-          Dica: viajar à noite (ex.: {formatTime(result.bestShade.hour, 0)}) elimina o sol direto. O campeão acima considera horários com luz do dia.
-        </Text>
+        <Text style={[styles.note, { color: colors.textSecondary }]}>{tx.nightTip(formatTime(result.bestShade.hour, 0))}</Text>
       ) : null}
       {goldenChamp ? (
         <Champion
           icon="partly-sunny"
           tone={colors.gold}
-          kicker="HORÁRIO CAMPEÃO DE GOLDEN HOUR"
-          title={`Saída às ${formatTime(goldenChamp.hour, goldenChamp.minute)}`}
-          body={`Vista ${goldenChamp.goldenScore}/100 do pôr/nascer do sol${goldenChamp.goldenSide ? ` pela janela ${sideName(goldenChamp.goldenSide, trip.mode)}` : ''}.`}
+          kicker={tx.goldenKicker}
+          title={tx.departAt(formatTime(goldenChamp.hour, goldenChamp.minute))}
+          body={tx.goldenBody(goldenChamp.goldenScore, goldenChamp.goldenSide ? s.sideName(goldenChamp.goldenSide, trip.mode) : null)}
+          applyLabel={tx.applyThis}
           onApply={() => apply(goldenChamp, 'golden')}
         />
       ) : (
         <Card>
-          <Text style={{ color: colors.textSecondary }}>Nenhum horário desta data tem golden hour durante o trajeto.</Text>
+          <Text style={{ color: colors.textSecondary }}>{tx.noGolden}</Text>
         </Card>
       )}
 
-      <SectionHeader title="Todos os horários do dia" subtitle="Altura = calor sentando do lado certo (menor é melhor)" />
+      <SectionHeader title={tx.allTimes} subtitle={tx.allTimesSubtitle} />
       <Card>
         <DepartureTimesChart result={result} width={innerW} selectedHour={Number(trip.time.slice(0, 2))} onSelect={setPicked} />
         {picked ? (
           <View style={{ marginTop: 12 }}>
-            <PrimaryButton label={`Aplicar saída às ${formatTime(picked.hour, picked.minute)}`} icon="checkmark-circle" onPress={() => apply(picked)} />
+            <PrimaryButton label={tx.applyAt(formatTime(picked.hour, picked.minute))} icon="checkmark-circle" onPress={() => apply(picked)} />
           </View>
         ) : null}
       </Card>
 
       <Pressable onPress={() => setShowTable((v) => !v)} accessibilityRole="button" style={styles.tableToggle}>
-        <Text style={{ color: colors.tintText, fontWeight: '600', fontSize: 15 }}>{showTable ? 'Ocultar tabela' : 'Ver tabela completa'}</Text>
+        <Text style={{ color: colors.tintText, fontWeight: '600', fontSize: 15 }}>{showTable ? tx.hideTable : tx.showTable}</Text>
         <Ionicons name={showTable ? 'chevron-up' : 'chevron-down'} size={16} color={colors.tintText} />
       </Pressable>
       {showTable ? (
         <Card padded={false}>
           <View style={[styles.tr, { borderBottomColor: colors.separator }]}>
-            {['Saída', 'Conforto', 'Pior lado', 'Golden', 'Lado'].map((h) => (
+            {tx.tableHeaders.map((h) => (
               <Text key={h} style={[styles.th, { color: colors.textMuted }]}>
                 {h}
               </Text>
             ))}
           </View>
-          {result.slots.map((s) => (
-            <Pressable key={s.hour} onPress={() => apply(s)} style={[styles.tr, { borderBottomColor: colors.separator }]} accessibilityRole="button">
-              <Text style={[styles.td, { color: colors.text, fontWeight: '700' }]}>{formatTime(s.hour, s.minute)}</Text>
-              <Text style={[styles.td, { color: colors.text }]}>{s.comfortScore}</Text>
-              <Text style={[styles.td, { color: colors.text }]}>{s.heatScore}</Text>
-              <Text style={[styles.td, { color: colors.text }]}>{s.goldenScore}</Text>
-              <Text style={[styles.td, { color: colors.textSecondary }]}>{s.nightFraction > 0.99 ? 'noite' : s.shadeSide === 'either' ? '—' : s.shadeSide === 'left' ? 'esq.' : 'dir.'}</Text>
+          {result.slots.map((slot) => (
+            <Pressable key={slot.hour} onPress={() => apply(slot)} style={[styles.tr, { borderBottomColor: colors.separator }]} accessibilityRole="button">
+              <Text style={[styles.td, { color: colors.text, fontWeight: '700' }]}>{formatTime(slot.hour, slot.minute)}</Text>
+              <Text style={[styles.td, { color: colors.text }]}>{slot.comfortScore}</Text>
+              <Text style={[styles.td, { color: colors.text }]}>{slot.heatScore}</Text>
+              <Text style={[styles.td, { color: colors.text }]}>{slot.goldenScore}</Text>
+              <Text style={[styles.td, { color: colors.textSecondary }]}>
+                {slot.nightFraction > 0.99 ? tx.cellNight : slot.shadeSide === 'either' ? '—' : slot.shadeSide === 'left' ? tx.cellLeft : tx.cellRight}
+              </Text>
             </Pressable>
           ))}
         </Card>
@@ -105,7 +107,23 @@ export default function OptimizerScreen() {
   );
 }
 
-function Champion({ icon, tone, kicker, title, body, onApply }: { icon: 'umbrella' | 'partly-sunny'; tone: string; kicker: string; title: string; body: string; onApply: () => void }) {
+function Champion({
+  icon,
+  tone,
+  kicker,
+  title,
+  body,
+  applyLabel,
+  onApply,
+}: {
+  icon: 'umbrella' | 'partly-sunny';
+  tone: string;
+  kicker: string;
+  title: string;
+  body: string;
+  applyLabel: string;
+  onApply: () => void;
+}) {
   const { colors } = useAppTheme();
   return (
     <Card>
@@ -119,7 +137,7 @@ function Champion({ icon, tone, kicker, title, body, onApply }: { icon: 'umbrell
         </View>
       </View>
       <Text style={[styles.champBody, { color: colors.textSecondary }]}>{body}</Text>
-      <PrimaryButton label="Aplicar este horário" variant="tinted" icon="time" onPress={onApply} />
+      <PrimaryButton label={applyLabel} variant="tinted" icon="time" onPress={onApply} />
     </Card>
   );
 }

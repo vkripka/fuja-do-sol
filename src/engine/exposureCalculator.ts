@@ -7,6 +7,9 @@ import { clamp, cosD, normalizeSigned, round, sinD } from './math';
 import { defaultAltitude, defaultPath, discretizeRoute } from './routeDiscretizer';
 import { pathLengthKm } from './geodesic';
 import { getSolarPosition, goldenWeight, SUNRISE_ELEVATION } from './solarPosition';
+import { buildVerdict } from './verdict';
+
+export { sideLabel } from './verdict';
 import type {
   ExposureWindow,
   GoldenEvent,
@@ -237,29 +240,6 @@ export function detectGoldenEvents(exposures: readonly SegmentExposure[]): Golde
   return events;
 }
 
-export function sideLabel(side: SunSide | 'either' | 'center'): string {
-  switch (side) {
-    case 'left':
-      return 'ESQUERDO';
-    case 'right':
-      return 'DIREITO';
-    case 'front':
-      return 'FRENTE';
-    case 'back':
-      return 'TRÁS';
-    case 'overhead':
-      return 'ZÊNITE';
-    case 'center':
-      return 'CENTRO';
-    case 'either':
-      return 'QUALQUER';
-    default:
-      return 'NOITE';
-  }
-}
-
-const opposite = (s: LateralSide): LateralSide => (s === 'left' ? 'right' : 'left');
-
 /** Análise completa de exposição solar de uma viagem. */
 export function analyzeTrip(input: TripInput): TripAnalysisResult {
   const path = input.path && input.path.length >= 2 ? input.path : defaultPath(input.origin, input.destination);
@@ -360,74 +340,6 @@ export function analyzeTrip(input: TripInput): TripAnalysisResult {
     golden,
     verdict,
     verdictDetail,
-  };
-}
-
-interface VerdictInput {
-  optimization: TripInput['optimization'];
-  daylight: number;
-  shadeSide: LateralSide | 'either';
-  advantagePct: number;
-  sunlit: { left: number; right: number; front: number; back: number };
-  flips: SunFlip[];
-  golden: GoldenSummary;
-  lateralMax: number;
-}
-
-function buildVerdict(v: VerdictInput): { verdict: string; verdictDetail: string } {
-  if (v.daylight <= 0) {
-    return {
-      verdict: 'Viagem noturna: 0% de sol direto',
-      verdictDetail: 'O Sol fica abaixo do horizonte durante todo o trajeto. Escolha a poltrona pelo conforto — nenhum lado recebe sol.',
-    };
-  }
-  const flipNote =
-    v.flips.length > 0
-      ? ` O sol troca de lado ${v.flips.length === 1 ? '1 vez' : `${v.flips.length} vezes`} no caminho.`
-      : '';
-  if (v.optimization === 'golden') {
-    if (v.golden.bestSide) {
-      const ev = v.golden.events.find((e) => e.side === v.golden.bestSide) ?? v.golden.events[0];
-      const what = ev ? (ev.kind === 'sunset' ? 'o pôr do sol' : 'o nascer do sol') : 'a golden hour';
-      return {
-        verdict: `Golden hour pela janela ${sideLabel(v.golden.bestSide)}`,
-        verdictDetail: `Sente na janela do lado ${sideLabel(v.golden.bestSide).toLowerCase()} para ver ${what} durante a viagem.${flipNote}`,
-      };
-    }
-    if (v.golden.available) {
-      const ahead = v.golden.front >= v.golden.back;
-      const ev = v.golden.events[0];
-      const what = ev ? (ev.kind === 'sunset' ? 'O pôr do sol' : 'O nascer do sol') : 'A golden hour';
-      return {
-        verdict: ahead ? 'Golden hour pela FRENTE' : 'Golden hour pela TRASEIRA',
-        verdictDetail: `${what} fica ${ahead ? 'à frente do veículo — bancos dianteiros e para-brisa têm a melhor vista' : 'atrás do veículo — prefira a traseira, a popa ou o convés aberto'}.${flipNote}`,
-      };
-    }
-    return {
-      verdict: 'Sem golden hour nesta viagem',
-      verdictDetail:
-        'O Sol não fica baixo no horizonte durante o trajeto. Tente o Otimizador para achar um horário com pôr ou nascer do sol.' +
-        (v.shadeSide !== 'either' ? ` Para fugir do calor, prefira o lado ${sideLabel(v.shadeSide).toLowerCase()}.` : ''),
-    };
-  }
-  if (v.shadeSide === 'either') {
-    if (v.lateralMax < 0.02) {
-      return {
-        verdict: 'Sol fraco: qualquer lado serve',
-        verdictDetail: `O sol nas janelas laterais é mínimo (baixo, alto demais ou pela frente/trás).${flipNote}`,
-      };
-    }
-    return {
-      verdict: 'Sol equilibrado entre os lados',
-      verdictDetail: `Os dois lados recebem sol em quantidade parecida.${flipNote} Prefira o corredor e use a cortina nos trechos indicados.`,
-    };
-  }
-  const sunny = opposite(v.shadeSide);
-  return {
-    verdict: `Sente do lado ${sideLabel(v.shadeSide)} — ${v.advantagePct}% mais fresco`,
-    verdictDetail: `O lado ${sideLabel(sunny).toLowerCase()} recebe sol direto por cerca de ${Math.round(
-      v.sunlit[sunny],
-    )} min, contra ${Math.round(v.sunlit[v.shadeSide])} min do lado ${sideLabel(v.shadeSide).toLowerCase()}.${flipNote}`,
   };
 }
 

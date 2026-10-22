@@ -4,10 +4,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import type { ComponentRef, Ref } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { shortCode, type Place } from '../data/hubs';
-import { positionLabel } from '../engine/seatRecommender';
+import { CAR_SEAT_NAMES_EN, positionLabel } from '../engine/seatRecommender';
 import { formatZonedDate, formatZonedTime, type TimeZoneId } from '../engine/timezone';
 import type { SeatRecommendation, TransportMode, TripAnalysisResult } from '../engine/types';
-import { busSeatHint, formatDuration, MODE_META, sideName } from '../utils/format';
+import { localizeVerdict, sideLabel } from '../engine/verdict';
+import { STRINGS, useI18n, type Lang } from '../i18n';
+import { formatDuration, MODE_META } from '../utils/format';
 
 export interface ShareTicketProps {
   analysis: TripAnalysisResult;
@@ -19,30 +21,38 @@ export interface ShareTicketProps {
   ref?: Ref<ComponentRef<typeof View>>;
 }
 
-export function ticketHeadline(analysis: TripAnalysisResult, mode: TransportMode): string {
-  if (analysis.daylightMinutes === 0) return 'VIAGEM NOTURNA — SEM SOL';
+export function ticketHeadline(analysis: TripAnalysisResult, mode: TransportMode, lang: Lang = 'pt'): string {
+  const tx = STRINGS[lang];
+  if (analysis.daylightMinutes === 0) return tx.ticket.headlineNight;
   const side = analysis.recommendedSide;
-  if (side === 'either') return 'QUALQUER LADO SERVE';
-  if (analysis.input.optimization === 'golden' && analysis.golden.bestSide) return `PÔR/NASCER DO SOL: ${sideName(side, mode).toUpperCase()}`;
-  return `SENTE DO LADO ${side === 'left' ? 'ESQUERDO' : 'DIREITO'}`;
+  if (side === 'either') return tx.ticket.headlineEither;
+  if (analysis.input.optimization === 'golden' && analysis.golden.bestSide) return tx.ticket.headlineGolden(tx.sideName(side, mode));
+  return tx.ticket.headlineSide(sideLabel(side, lang));
 }
 
-export function ticketShareText(p: Omit<ShareTicketProps, 'ref'>): string {
+function seatName(seats: SeatRecommendation, mode: TransportMode, lang: Lang): string {
+  const seat = seats.best.seat;
+  return lang === 'en' && mode === 'car' ? CAR_SEAT_NAMES_EN[seat.id] ?? seat.label : seat.label;
+}
+
+export function ticketShareText(p: Omit<ShareTicketProps, 'ref'>, lang: Lang = 'pt'): string {
   const { analysis, seats, origin, destination, mode, timeZone } = p;
+  const tx = STRINGS[lang];
   const dep = analysis.input.departure;
   const lines = [
-    `☀️ Bilhete de Sombra — Fuja do Sol!`,
-    `${MODE_META[mode].label}: ${origin.city} → ${destination.city}`,
-    `${formatZonedDate(dep, timeZone)}, saída ${formatZonedTime(dep, timeZone)} (${formatDuration(analysis.durationMinutes)})`,
-    `👉 ${ticketHeadline(analysis, mode)}`,
-    analysis.verdict,
-    `Melhor ${MODE_META[mode].seatWord}: ${seats.best.seat.label} (${positionLabel(seats.best.seat, mode).toLowerCase()})`,
+    tx.ticket.shareTitle,
+    `${tx.modes[mode]}: ${origin.city} → ${destination.city}`,
+    tx.ticket.shareDeparture(formatZonedDate(dep, timeZone, lang), formatZonedTime(dep, timeZone), formatDuration(analysis.durationMinutes)),
+    `👉 ${ticketHeadline(analysis, mode, lang)}`,
+    localizeVerdict(analysis, lang).verdict,
+    tx.ticket.shareBest(tx.seatWord[mode], seatName(seats, mode, lang), positionLabel(seats.best.seat, mode, lang).toLowerCase()),
   ];
-  if (mode === 'bus' && analysis.recommendedSide !== 'either') lines.push(`Dica: ${busSeatHint(analysis.recommendedSide)}`);
+  if (mode === 'bus' && analysis.recommendedSide !== 'either') lines.push(tx.ticket.shareTip(tx.busSeatHint(analysis.recommendedSide)));
   return lines.join('\n');
 }
 
 export function ShareTicketCard({ analysis, seats, origin, destination, mode, timeZone, ref }: ShareTicketProps) {
+  const { s, lang } = useI18n();
   const dep = analysis.input.departure;
   const arr = new Date(dep.getTime() + analysis.durationMinutes * 60000);
   const side = analysis.recommendedSide;
@@ -53,8 +63,8 @@ export function ShareTicketCard({ analysis, seats, origin, destination, mode, ti
     <View ref={ref} collapsable={false} style={styles.ticket}>
       <LinearGradient colors={golden ? ['#FF9A62', '#C2417A'] : ['#FFB000', '#FF6A2B']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
         <View style={styles.headerRow}>
-          <Text style={styles.brand}>☀ FUJA DO SOL!</Text>
-          <Text style={styles.kind}>{golden ? 'BILHETE GOLDEN HOUR' : 'BILHETE DE SOMBRA'}</Text>
+          <Text style={styles.brand}>{s.ticket.brand}</Text>
+          <Text style={styles.kind}>{golden ? s.ticket.kindGolden : s.ticket.kindShade}</Text>
         </View>
         <View style={styles.codes}>
           <View>
@@ -75,10 +85,10 @@ export function ShareTicketCard({ analysis, seats, origin, destination, mode, ti
 
       <View style={styles.body}>
         <View style={styles.grid}>
-          <Field label="DATA" value={formatZonedDate(dep, timeZone)} />
-          <Field label="PARTIDA" value={formatZonedTime(dep, timeZone)} />
-          <Field label="CHEGADA" value={formatZonedTime(arr, timeZone)} />
-          <Field label="DURAÇÃO" value={formatDuration(analysis.durationMinutes)} />
+          <Field label={s.ticket.date} value={formatZonedDate(dep, timeZone, lang)} />
+          <Field label={s.ticket.departure} value={formatZonedTime(dep, timeZone)} />
+          <Field label={s.ticket.arrival} value={formatZonedTime(arr, timeZone)} />
+          <Field label={s.ticket.duration} value={formatDuration(analysis.durationMinutes)} />
         </View>
 
         <View style={styles.perforation}>
@@ -87,16 +97,16 @@ export function ShareTicketCard({ analysis, seats, origin, destination, mode, ti
           <View style={[styles.notch, { right: -26 }]} />
         </View>
 
-        <Text style={styles.headline}>{ticketHeadline(analysis, mode)}</Text>
-        <Text style={styles.verdict}>{analysis.verdict}</Text>
+        <Text style={styles.headline}>{ticketHeadline(analysis, mode, lang)}</Text>
+        <Text style={styles.verdict}>{localizeVerdict(analysis, lang).verdict}</Text>
 
         <View style={styles.grid}>
-          <Field label={`MELHOR ${MODE_META[mode].seatWord.toUpperCase()}`} value={seats.best.seat.label} big />
-          <Field label="NA SOMBRA" value={`${shade}%`} big />
-          <Field label="UV PICO" value={analysis.peakUv.toFixed(0)} big />
+          <Field label={s.ticket.best(s.seatWord[mode])} value={seatName(seats, mode, lang)} big />
+          <Field label={s.ticket.inShade} value={`${shade}%`} big />
+          <Field label={s.ticket.uvPeak} value={analysis.peakUv.toFixed(0)} big />
         </View>
-        {mode === 'bus' && side !== 'either' ? <Text style={styles.hint}>Poltronas sugeridas: {busSeatHint(side)}</Text> : null}
-        <Text style={styles.footer}>Calculado com astronomia de precisão (NOAA/Meeus) · fujadosol.app</Text>
+        {mode === 'bus' && side !== 'either' ? <Text style={styles.hint}>{s.ticket.suggestedSeats(s.busSeatHint(side))}</Text> : null}
+        <Text style={styles.footer}>{s.ticket.footer}</Text>
       </View>
     </View>
   );
@@ -106,7 +116,9 @@ function Field({ label, value, big }: { label: string; value: string; big?: bool
   return (
     <View style={styles.field}>
       <Text style={styles.fieldLabel}>{label}</Text>
-      <Text style={[styles.fieldValue, big && styles.fieldValueBig]}>{value}</Text>
+      <Text style={[styles.fieldValue, big && styles.fieldValueBig]} numberOfLines={1} adjustsFontSizeToFit>
+        {value}
+      </Text>
     </View>
   );
 }
@@ -122,7 +134,7 @@ const styles = StyleSheet.create({
   city: { color: '#FFFFFFE6', fontSize: 13, fontWeight: '600', maxWidth: 120 },
   body: { padding: 18, paddingTop: 14 },
   grid: { flexDirection: 'row', justifyContent: 'space-between' },
-  field: { flex: 1 },
+  field: { flex: 1, paddingRight: 4 },
   fieldLabel: { color: '#8A7A66', fontSize: 10, fontWeight: '700', letterSpacing: 0.8 },
   fieldValue: { color: '#2B1D0E', fontSize: 15, fontWeight: '700', marginTop: 2 },
   fieldValueBig: { fontSize: 24, fontWeight: '800' },

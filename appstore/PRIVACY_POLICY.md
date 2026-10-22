@@ -35,6 +35,7 @@ Para obter o traçado real das estradas e buscar endereços fora da base offline
 
 - **OSRM** (`router.project-osrm.org`) — recebe as coordenadas de origem, destino e pontos intermediários da rota consultada;
 - **Nominatim** (`nominatim.openstreetmap.org`) — recebe o texto digitado na busca de lugares.
+- **Esri ArcGIS Online** (`server.arcgisonline.com`) — quando você escolhe os modos **Mapa** ou **Satélite** no Raio-X, recebe os índices das "peças" (tiles) do mapa da região da rota.
 
 Essas requisições são feitas apenas para responder à sua solicitação em tempo real, não contêm identificadores pessoais nem dados de conta e não são vinculadas a você pelo app. Como em qualquer acesso à internet, esses serviços podem registrar o endereço IP de forma técnica, conforme as políticas da OpenStreetMap Foundation (<https://osmfoundation.org/wiki/Privacy_Policy>). Você pode **desligar totalmente** essas consultas em **Salvos → Ajustes → Rotas e buscas online**; nesse caso o app funciona 100% offline.
 

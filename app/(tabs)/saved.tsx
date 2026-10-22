@@ -4,16 +4,21 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { Screen } from '../../src/components/Screen';
-import { Accordion, Card, Chip, InfoRow, SectionHeader } from '../../src/components/ui';
+import { Accordion, Card, Chip, InfoRow, SectionHeader, SegmentedControl } from '../../src/components/ui';
 import { useTrip } from '../../src/context/TripContext';
+import { dateParts, useI18n, type Lang } from '../../src/i18n';
+import { haptics } from '../../src/services/deviceServices';
 import { clearGeocodeCache } from '../../src/services/geocodingService';
 import { clearHistory, getFavorites, getHistory, MAX_HISTORY, removeFavorite, type SavedTrip } from '../../src/services/storageService';
-import { haptics } from '../../src/services/deviceServices';
 import { useAppTheme } from '../../src/theme/colors';
-import { dateChipLabel, formatDuration, MODE_META, sideName } from '../../src/utils/format';
+import { formatDuration, MODE_META } from '../../src/utils/format';
+
+const GUIDE_ICONS = ['sunny', 'car-sport', 'arrow-up-circle', 'bus', 'airplane', 'boat', 'lock-closed'] as const;
 
 export default function SavedScreen() {
   const { colors } = useAppTheme();
+  const { s } = useI18n();
+  const tx = s.saved;
   const t = useTrip();
   const [favorites, setFavorites] = useState<SavedTrip[]>([]);
   const [history, setHistory] = useState<SavedTrip[]>([]);
@@ -25,23 +30,23 @@ export default function SavedScreen() {
     }, []),
   );
 
-  const open = (s: SavedTrip) => {
+  const open = (trip: SavedTrip) => {
     haptics.selection();
-    t.loadSaved(s);
+    t.loadSaved(trip);
     router.push('/results');
   };
 
-  const remove = (s: SavedTrip) =>
-    Alert.alert('Remover viagem?', s.name, [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Remover', style: 'destructive', onPress: () => void removeFavorite(s.id).then(setFavorites) },
+  const remove = (trip: SavedTrip) =>
+    Alert.alert(tx.removeTitle, trip.name, [
+      { text: s.cancel, style: 'cancel' },
+      { text: tx.remove, style: 'destructive', onPress: () => void removeFavorite(trip.id).then(setFavorites) },
     ]);
 
   const wipeHistory = () =>
-    Alert.alert('Limpar histórico?', 'As viagens favoritas continuam salvas.', [
-      { text: 'Cancelar', style: 'cancel' },
+    Alert.alert(tx.clearHistoryTitle, tx.clearHistoryBody, [
+      { text: s.cancel, style: 'cancel' },
       {
-        text: 'Limpar',
+        text: tx.clear,
         style: 'destructive',
         onPress: () => {
           void clearHistory().then(() => setHistory([]));
@@ -51,51 +56,58 @@ export default function SavedScreen() {
     ]);
 
   return (
-    <Screen title="Salvos" subtitle="Suas viagens favoritas e histórico recente">
-      <SectionHeader title="Viagens favoritas" />
+    <Screen title={tx.title} subtitle={tx.subtitle}>
+      <SectionHeader title={tx.favorites} />
       <Card padded={false}>
         {favorites.length === 0 ? (
-          <Text style={[styles.empty, { color: colors.textSecondary }]}>Toque em “Salvar Viagem” no Raio-X para guardar suas rotas aqui.</Text>
+          <Text style={[styles.empty, { color: colors.textSecondary }]}>{tx.favoritesEmpty}</Text>
         ) : (
-          favorites.map((s) => <TripRow key={s.id} trip={s} onPress={() => open(s)} onDelete={() => remove(s)} />)
+          favorites.map((trip) => <TripRow key={trip.id} trip={trip} onPress={() => open(trip)} onDelete={() => remove(trip)} />)
         )}
       </Card>
 
       <SectionHeader
-        title="Histórico recente"
+        title={tx.history}
         right={
           history.length > 0 ? (
             <Pressable onPress={wipeHistory} accessibilityRole="button" hitSlop={10}>
-              <Text style={{ color: colors.tintText, fontWeight: '600' }}>Limpar</Text>
+              <Text style={{ color: colors.tintText, fontWeight: '600' }}>{tx.clear}</Text>
             </Pressable>
           ) : undefined
         }
       />
       <Card padded={false}>
         {history.length === 0 ? (
-          <Text style={[styles.empty, { color: colors.textSecondary }]}>As viagens que você analisar aparecem aqui.</Text>
+          <Text style={[styles.empty, { color: colors.textSecondary }]}>{tx.historyEmpty}</Text>
         ) : (
-          history.map((s) => <TripRow key={s.id} trip={s} onPress={() => open(s)} />)
+          history.map((trip) => <TripRow key={trip.id} trip={trip} onPress={() => open(trip)} />)
         )}
       </Card>
 
       <View style={{ height: 8 }} />
-      <Accordion title="Ajustes" subtitle="Rotas online e alertas de cortina" icon="settings-outline">
-        <View style={styles.settingRow}>
+      <Accordion title={tx.settings} subtitle={tx.settingsSubtitle} icon="settings-outline">
+        <Text style={[styles.settingTitle, { color: colors.text, marginBottom: 8 }]}>{tx.language}</Text>
+        <SegmentedControl<Lang>
+          options={[
+            { value: 'pt', label: 'Português' },
+            { value: 'en', label: 'English' },
+          ]}
+          value={t.preferences.language}
+          onChange={(language) => t.updatePreferences({ language })}
+        />
+        <View style={[styles.settingRow, { marginTop: 16 }]}>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.settingTitle, { color: colors.text }]}>Rotas e buscas online</Text>
-            <Text style={[styles.settingBody, { color: colors.textSecondary }]}>
-              Usa OpenStreetMap (OSRM/Nominatim) para estradas reais. Desligado, tudo funciona offline.
-            </Text>
+            <Text style={[styles.settingTitle, { color: colors.text }]}>{tx.onlineTitle}</Text>
+            <Text style={[styles.settingBody, { color: colors.textSecondary }]}>{tx.onlineBody}</Text>
           </View>
           <Switch
             value={t.preferences.useOnlineServices}
             onValueChange={(v) => t.updatePreferences({ useOnlineServices: v })}
             trackColor={{ true: colors.tint }}
-            accessibilityLabel="Rotas e buscas online"
+            accessibilityLabel={tx.onlineTitle}
           />
         </View>
-        <Text style={[styles.settingTitle, { color: colors.text, marginTop: 14 }]}>Antecedência dos alertas de cortina</Text>
+        <Text style={[styles.settingTitle, { color: colors.text, marginTop: 14 }]}>{tx.alertLead}</Text>
         <View style={styles.chips}>
           {[2, 5, 10, 15].map((m) => (
             <Chip key={m} label={`${m} min`} selected={t.preferences.alertLeadMinutes === m} onPress={() => t.updatePreferences({ alertLeadMinutes: m })} />
@@ -103,21 +115,11 @@ export default function SavedScreen() {
         </View>
       </Accordion>
 
-      <Accordion title="Guia Solar & Dicas" subtitle="UV, vidros, numeração de poltronas e privacidade" icon="sunny-outline">
-        <InfoRow icon="sunny" title="UVA × UVB" body="O UVB queima a pele e é barrado por qualquer vidro. O UVA atravessa janelas laterais e causa envelhecimento e manchas." />
-        <InfoRow icon="car-sport" title="Para-brisa × janela lateral" body="O para-brisa laminado bloqueia ~98% do UVA. Janelas laterais temperadas deixam passar boa parte dele." />
-        <InfoRow icon="arrow-up-circle" title="Sol a pino" body="Perto do meio-dia o teto faz sombra nas janelas. O pior é o sol baixo, de manhã e à tarde." />
-        <InfoRow icon="bus" title="Poltronas de ônibus" body="Em geral, ímpares na janela e pares no corredor (1-2 à esquerda, 4-3 à direita). Confira o mapa da empresa." />
-        <InfoRow icon="airplane" title="Avião" body="A e F são janelas (A à esquerda), B e E meio, C e D corredor. Sobre a asa, a vista fica parcialmente bloqueada." />
-        <InfoRow icon="boat" title="Barco e trem" body="Bombordo = esquerda e estribordo = direita, olhando para a proa. No trem, se o assento estiver de costas, os lados se invertem." />
-        <InfoRow
-          icon="lock-closed"
-          title="Como calculamos & privacidade"
-          body="Posição do Sol por Meeus/NOAA, calculada no seu iPhone. Sem cadastro, rastreamento ou anúncios; suas viagens ficam só neste aparelho."
-        />
-        <Text style={[styles.version, { color: colors.textMuted }]}>
-          Fuja do Sol! versão {Constants.expoConfig?.version ?? '1.0.0'} · Dados de mapas © colaboradores do OpenStreetMap
-        </Text>
+      <Accordion title={tx.guide} subtitle={tx.guideSubtitle} icon="sunny-outline">
+        {tx.guideItems.map(([title, body], i) => (
+          <InfoRow key={title} icon={GUIDE_ICONS[i] ?? 'information-circle'} title={title} body={body} />
+        ))}
+        <Text style={[styles.version, { color: colors.textMuted }]}>{tx.version(Constants.expoConfig?.version ?? '1.0.0')}</Text>
       </Accordion>
     </Screen>
   );
@@ -125,13 +127,15 @@ export default function SavedScreen() {
 
 function TripRow({ trip, onPress, onDelete }: { trip: SavedTrip; onPress: () => void; onDelete?: () => void }) {
   const { colors } = useAppTheme();
-  const d = dateChipLabel(trip.date);
+  const { s, lang } = useI18n();
+  const d = dateParts(trip.date, lang);
+  const dateLabel = `${d.weekday} ${d.day} ${d.month}`;
   return (
     <Pressable
       onPress={onPress}
       onLongPress={onDelete}
       accessibilityRole="button"
-      accessibilityLabel={`${trip.name}, ${d.day} de ${d.month} às ${trip.time}`}
+      accessibilityLabel={s.saved.rowA11y(trip.name, dateLabel, trip.time)}
       style={({ pressed }) => [styles.row, { borderBottomColor: colors.separator, opacity: pressed ? 0.7 : 1 }]}
     >
       <View style={[styles.rowIcon, { backgroundColor: `${colors.tint}22` }]}>
@@ -142,12 +146,12 @@ function TripRow({ trip, onPress, onDelete }: { trip: SavedTrip; onPress: () => 
           {trip.name}
         </Text>
         <Text style={[styles.rowSub, { color: colors.textSecondary }]} numberOfLines={1}>
-          {d.weekday} {d.day} {d.month} · {trip.time} · {formatDuration(trip.durationMinutes)}
-          {trip.summary && trip.summary.recommendedSide !== 'either' ? ` · sente à ${sideName(trip.summary.recommendedSide)}` : ''}
+          {dateLabel} · {trip.time} · {formatDuration(trip.durationMinutes)}
+          {trip.summary && trip.summary.recommendedSide !== 'either' ? s.saved.sitOn(s.sideName(trip.summary.recommendedSide)) : ''}
         </Text>
       </View>
       {onDelete ? (
-        <Pressable onPress={onDelete} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Remover ${trip.name}`}>
+        <Pressable onPress={onDelete} hitSlop={10} accessibilityRole="button" accessibilityLabel={s.saved.removeA11y(trip.name)}>
           <Ionicons name="trash-outline" size={18} color={colors.textMuted} />
         </Pressable>
       ) : (

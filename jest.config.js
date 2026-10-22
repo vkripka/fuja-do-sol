@@ -10,7 +10,7 @@ module.exports = {
     '^@react-native-async-storage/async-storage$':
       '<rootDir>/node_modules/@react-native-async-storage/async-storage/jest/async-storage-mock.js',
   },
-  collectCoverageFrom: ['src/engine/**/*.ts', 'src/services/{geocodingService,routingService,storageService}.ts', 'src/data/**/*.ts'],
+  collectCoverageFrom: ['src/engine/**/*.ts', 'src/services/{geocodingService,routingService,storageService,mapTiles}.ts', 'src/data/**/*.ts'],
   coverageThreshold: {
     './src/engine/': {
       statements: 90,

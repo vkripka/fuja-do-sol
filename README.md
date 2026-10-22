@@ -33,8 +33,9 @@ Passo a passo completo, textos da loja, política de privacidade e checklist em 
 | Pasta | Conteúdo |
 |---|---|
 | `src/engine/` | Motor puro em TS: posição solar (Meeus/NOAA), geodésia, discretização da rota, exposição por janela, assentos, otimizador de horário, fusos |
-| `src/services/` | OSRM (rotas), Nominatim (busca), AsyncStorage, notificações/compartilhamento/localização |
+| `src/services/` | OSRM (rotas), Nominatim (busca mundial), tiles Web Mercator (Esri), AsyncStorage, notificações/compartilhamento/localização |
 | `src/data/` | 160+ locais offline e 10 viagens famosas |
 | `src/components/` | Bússola solar, mapa de assentos, mapa da rota, linha do tempo, gráfico de horários, bilhete |
-| `app/` | Expo Router: abas Simular, Raio-X, Assentos, Horários, Salvos |
+| `src/i18n/` | Textos em Português e Inglês (idioma em Salvos → Ajustes) |
+| `app/` | Expo Router: abas Simular, Raio-X, Assentos, Horários, Salvos; abertura animada |
 | `scripts/generate-assets.js` | Gera ícone/splash sem dependências (`npm run generate:assets`) |

@@ -11,6 +11,7 @@ export function Screen({
   children,
   skyHour,
   right,
+  leading,
 }: {
   title: string;
   subtitle?: string;
@@ -18,6 +19,8 @@ export function Screen({
   /** Hora local usada para tingir o topo com a cor do céu. */
   skyHour?: number;
   right?: ReactNode;
+  /** Elemento à esquerda do título (ex.: logo). */
+  leading?: ReactNode;
 }) {
   const { colors, scheme } = useAppTheme();
   const insets = useSafeAreaInsets();
@@ -35,6 +38,7 @@ export function Screen({
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
+          {leading ? <View style={styles.leading}>{leading}</View> : null}
           <View style={{ flex: 1 }}>
             <Text style={[styles.title, { color: colors.text }]} accessibilityRole="header">
               {title}
@@ -53,6 +57,7 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   content: { paddingHorizontal: 16, maxWidth: 720, width: '100%', alignSelf: 'center' },
   header: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: 16 },
+  leading: { marginRight: 12, marginBottom: 6, alignSelf: 'flex-start', marginTop: 2 },
   title: { fontSize: 34, fontWeight: '800', letterSpacing: -0.8 },
   subtitle: { fontSize: 15, marginTop: 4 },
 });

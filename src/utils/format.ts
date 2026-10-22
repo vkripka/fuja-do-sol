@@ -1,17 +1,19 @@
 /** Formatação e rótulos em pt-BR. */
 import type { ComponentProps } from 'react';
 import type Ionicons from '@expo/vector-icons/Ionicons';
+import { CAR_SEAT_NAMES_EN } from '../engine/seatRecommender';
 import { utcToZoned, type TimeZoneId } from '../engine/timezone';
-import type { LateralSide, SunSide, TransportMode } from '../engine/types';
+import type { Seat, TransportMode } from '../engine/types';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 
-export const MODE_META: Record<TransportMode, { label: string; icon: IconName; seatWord: string }> = {
-  bus: { label: 'Ônibus', icon: 'bus', seatWord: 'poltrona' },
-  plane: { label: 'Avião', icon: 'airplane', seatWord: 'assento' },
-  car: { label: 'Carro', icon: 'car-sport', seatWord: 'lugar' },
-  train: { label: 'Trem', icon: 'train', seatWord: 'assento' },
-  boat: { label: 'Barco', icon: 'boat', seatWord: 'lugar' },
+/** Ícone de cada modal (os nomes ficam em src/i18n). */
+export const MODE_META: Record<TransportMode, { icon: IconName }> = {
+  bus: { icon: 'bus' },
+  plane: { icon: 'airplane' },
+  car: { icon: 'car-sport' },
+  train: { icon: 'train' },
+  boat: { icon: 'boat' },
 };
 
 export const MODES: TransportMode[] = ['bus', 'plane', 'car', 'train', 'boat'];
@@ -26,29 +28,6 @@ export function formatDuration(minutes: number): string {
 
 export function formatKm(km: number): string {
   return km < 10 ? `${km.toFixed(1).replace('.', ',')} km` : `${Math.round(km).toLocaleString('pt-BR')} km`;
-}
-
-export function sideName(side: SunSide | LateralSide | 'either', mode?: TransportMode): string {
-  if (mode === 'boat') {
-    if (side === 'left') return 'bombordo (esquerda)';
-    if (side === 'right') return 'estribordo (direita)';
-  }
-  switch (side) {
-    case 'left':
-      return 'esquerda';
-    case 'right':
-      return 'direita';
-    case 'front':
-      return 'frente';
-    case 'back':
-      return 'trás';
-    case 'overhead':
-      return 'a pino';
-    case 'either':
-      return 'qualquer lado';
-    default:
-      return 'noite';
-  }
 }
 
 export const pad2 = (n: number): string => String(n).padStart(2, '0');
@@ -77,26 +56,6 @@ export function formatTime(hour: number, minute: number): string {
   return `${pad2(((hour % 24) + 24) % 24)}:${pad2(minute)}`;
 }
 
-const WEEK = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-const MON = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
-
-export function dateChipLabel(key: string): { weekday: string; day: string; month: string } {
-  const { year, month, day } = parseDateKey(key);
-  const wd = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
-  return { weekday: WEEK[wd], day: String(day), month: MON[month - 1] };
-}
-
-export function longDate(key: string): string {
-  const { day, month, year } = parseDateKey(key);
-  const l = dateChipLabel(key);
-  return `${l.weekday}, ${day} de ${MON[month - 1]} de ${year}`;
-}
-
-/** Sugestão de poltronas do ônibus para o lado (ímpares = janelas). */
-export function busSeatHint(side: LateralSide): string {
-  return side === 'right' ? 'janelas ímpares 3, 7, 11, 15…' : 'janelas ímpares 1, 5, 9, 13…';
-}
-
 /** Data e horário "agora" no fuso dado, com o horário arredondado para cima em 5 min. */
 export function nowRounded(tz: TimeZoneId, now: Date = new Date()): { date: string; time: string } {
   const p = utcToZoned(new Date(Math.ceil(now.getTime() / 300000) * 300000), tz);
@@ -108,4 +67,9 @@ export function minutesBetween(a: string, b: string): number {
   const x = parseTime(a);
   const y = parseTime(b);
   return Math.abs(x.hour * 60 + x.minute - (y.hour * 60 + y.minute));
+}
+
+/** Nome do assento para exibição (os lugares do carro têm nome próprio em inglês). */
+export function seatDisplayName(seat: Seat, mode: TransportMode, lang: 'pt' | 'en'): string {
+  return lang === 'en' && mode === 'car' ? CAR_SEAT_NAMES_EN[seat.id] ?? seat.label : seat.label;
 }

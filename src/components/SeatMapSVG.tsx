@@ -4,6 +4,7 @@
  */
 import Svg, { Circle, G, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
 import type { CabinLayout, SeatRecommendation, SeatScore } from '../engine/types';
+import { useI18n, type Strings } from '../i18n';
 import { contrastText, goldenColor, heatColor, useAppTheme, type Palette, type Scheme } from '../theme/colors';
 
 export interface SeatMapProps {
@@ -26,7 +27,21 @@ const CAR_LABELS: Record<string, string> = {
 
 const SEAT_SIZE: Record<CabinLayout['mode'], number> = { bus: 0.15, plane: 0.105, car: 0.2, train: 0.15, boat: 0.12 };
 
-function VehicleOutline({ layout, W, H, colors, scheme }: { layout: CabinLayout; W: number; H: number; colors: Palette; scheme: Scheme }) {
+function VehicleOutline({
+  layout,
+  W,
+  H,
+  colors,
+  scheme,
+  tx,
+}: {
+  layout: CabinLayout;
+  W: number;
+  H: number;
+  colors: Palette;
+  scheme: Scheme;
+  tx: Strings['seats'];
+}) {
   const body = scheme === 'dark' ? '#1F1F22' : '#FAFAFC';
   const stroke = colors.textMuted;
   switch (layout.mode) {
@@ -47,10 +62,10 @@ function VehicleOutline({ layout, W, H, colors, scheme }: { layout: CabinLayout;
           />
           <Path d={`M${W * 0.42},${H * 0.06} Q${W * 0.5},${H * 0.045} ${W * 0.58},${H * 0.06}`} stroke={stroke} strokeWidth={3} fill="none" />
           <SvgText x={4} y={yA + 18} fontSize={10} fill={colors.textMuted}>
-            ASA
+            {tx.svgWing}
           </SvgText>
           <SvgText x={W - 4} y={yA + 18} fontSize={10} fill={colors.textMuted} textAnchor="end">
-            ASA
+            {tx.svgWing}
           </SvgText>
         </G>
       );
@@ -68,7 +83,7 @@ function VehicleOutline({ layout, W, H, colors, scheme }: { layout: CabinLayout;
           <Path d={`M${W * 0.28},${H * 0.84} Q${W * 0.5},${H * 0.88} ${W * 0.72},${H * 0.84} L${W * 0.7},${H * 0.81} Q${W * 0.5},${H * 0.84} ${W * 0.3},${H * 0.81} Z`} fill={`${colors.sunFront}33`} />
           <Circle cx={W * 0.31} cy={H * 0.33} r={W * 0.06} fill="none" stroke={stroke} strokeWidth={2} />
           <SvgText x={W / 2} y={H * 0.17} fontSize={10} fill={colors.textMuted} textAnchor="middle">
-            PARA-BRISA
+            {tx.svgWindshield}
           </SvgText>
         </G>
       );
@@ -83,13 +98,13 @@ function VehicleOutline({ layout, W, H, colors, scheme }: { layout: CabinLayout;
           />
           <Rect x={W * 0.13} y={H * 0.16} width={W * 0.74} height={H * 0.55} rx={14} fill="none" stroke={stroke} strokeDasharray="4 4" />
           <SvgText x={W / 2} y={H * 0.74} fontSize={10} fill={colors.textMuted} textAnchor="middle">
-            CONVÉS ABERTO
+            {tx.svgOpenDeck}
           </SvgText>
           <SvgText x={W * 0.06} y={H * 0.45} fontSize={10} fill={colors.textMuted} textAnchor="middle" transform={`rotate(-90 ${W * 0.06} ${H * 0.45})`}>
-            BOMBORDO
+            {tx.svgPort}
           </SvgText>
           <SvgText x={W * 0.94} y={H * 0.45} fontSize={10} fill={colors.textMuted} textAnchor="middle" transform={`rotate(90 ${W * 0.94} ${H * 0.45})`}>
-            ESTRIBORDO
+            {tx.svgStarboard}
           </SvgText>
         </G>
       );
@@ -109,7 +124,7 @@ function VehicleOutline({ layout, W, H, colors, scheme }: { layout: CabinLayout;
           <Circle cx={W * 0.17} cy={H * 0.1} r={W * 0.06} fill="none" stroke={stroke} strokeWidth={2} />
           <Rect x={W * 0.78} y={H * 0.07} width={W * 0.12} height={H * 0.06} rx={4} fill="none" stroke={stroke} strokeDasharray="3 3" />
           <SvgText x={W * 0.84} y={H * 0.145} fontSize={9} fill={colors.textMuted} textAnchor="middle">
-            PORTA
+            {tx.svgDoor}
           </SvgText>
         </G>
       );
@@ -118,6 +133,8 @@ function VehicleOutline({ layout, W, H, colors, scheme }: { layout: CabinLayout;
 
 export function SeatMapSVG({ recommendation, selectedId, onSelect, width, goldenView }: SeatMapProps) {
   const { colors, scheme } = useAppTheme();
+  const { s: i18n } = useI18n();
+  const tx = i18n.seats;
   const layout = recommendation.layout;
   const W = width;
   const H = width / layout.aspect;
@@ -125,12 +142,12 @@ export function SeatMapSVG({ recommendation, selectedId, onSelect, width, golden
   const bestId = recommendation.best.seat.id;
 
   return (
-    <Svg width={W} height={H + 24} viewBox={`0 0 ${W} ${H + 24}`} accessibilityLabel={`Mapa de assentos: ${layout.name}`}>
+    <Svg width={W} height={H + 24} viewBox={`0 0 ${W} ${H + 24}`} accessibilityLabel={tx.svgA11y(i18n.layoutNames[layout.mode])}>
       <SvgText x={W / 2} y={14} fontSize={11} fontWeight="700" fill={colors.textMuted} textAnchor="middle">
-        ▲ FRENTE
+        {tx.svgFront}
       </SvgText>
       <G transform="translate(0, 20)">
-        <VehicleOutline layout={layout} W={W} H={H} colors={colors} scheme={scheme} />
+        <VehicleOutline layout={layout} W={W} H={H} colors={colors} scheme={scheme} tx={tx} />
         {recommendation.scores.map((sc) => {
           const { seat } = sc;
           const cx = seat.x * W;
@@ -145,7 +162,7 @@ export function SeatMapSVG({ recommendation, selectedId, onSelect, width, golden
             <G
               key={seat.id}
               onPress={onSelect ? () => onSelect(sc) : undefined}
-              accessibilityLabel={`${seat.label}, calor ${sc.heat} de 100`}
+              accessibilityLabel={tx.seatA11y(seat.label, sc.heat)}
             >
               {/* área de toque maior que a marca */}
               <Rect x={cx - w / 2 - 3} y={cy - s / 2 - 3} width={w + 6} height={s + 6} fill="transparent" />

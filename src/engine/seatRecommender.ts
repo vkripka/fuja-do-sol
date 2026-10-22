@@ -19,6 +19,7 @@ import type {
   TripAnalysisResult,
   UvLevel,
 } from './types';
+import type { Lang } from './verdict';
 
 const zoneOf = (row: number, rows: number): CabinZone => {
   const f = (row - 0.5) / rows;
@@ -315,8 +316,31 @@ function matchesPreferences(s: Seat, prefs: SeatPreferences): boolean {
   return true;
 }
 
-export function positionLabel(s: Seat, mode: TransportMode): string {
-  const side = s.side === 'left' ? (mode === 'boat' ? 'bombordo' : 'esquerda') : s.side === 'right' ? (mode === 'boat' ? 'estribordo' : 'direita') : 'centro';
+const POSITION_TEXT: Record<Lang, { left: string; right: string; port: string; starboard: string; center: string }> = {
+  pt: { left: 'esquerda', right: 'direita', port: 'bombordo', starboard: 'estribordo', center: 'centro' },
+  en: { left: 'left', right: 'right', port: 'port', starboard: 'starboard', center: 'center' },
+};
+
+export function positionLabel(s: Seat, mode: TransportMode, lang: Lang = 'pt'): string {
+  const w = POSITION_TEXT[lang];
+  const side = s.side === 'left' ? (mode === 'boat' ? w.port : w.left) : s.side === 'right' ? (mode === 'boat' ? w.starboard : w.right) : w.center;
+  if (lang === 'en') {
+    const Side = side[0].toUpperCase() + side.slice(1);
+    switch (s.position) {
+      case 'window':
+        return `${Side} window`;
+      case 'middle':
+        return `${Side} middle`;
+      case 'aisle':
+        return `${Side} aisle`;
+      case 'center':
+        return 'Center';
+      case 'deck':
+        return `Open deck (${side})`;
+      case 'driver':
+        return 'Driver';
+    }
+  }
   switch (s.position) {
     case 'window':
       return `Janela ${side}`;
@@ -332,6 +356,30 @@ export function positionLabel(s: Seat, mode: TransportMode): string {
       return 'Motorista';
   }
 }
+
+/** Frase curta que explica o melhor assento, no idioma pedido. */
+export function seatReasonText(best: SeatScore, mode: TransportMode, goldenActive: boolean, night: boolean, lang: Lang = 'pt'): string {
+  const where = positionLabel(best.seat, mode, lang).toLowerCase();
+  if (lang === 'en') {
+    const prefix = mode === 'car' ? CAR_SEAT_NAMES_EN[best.seat.id] ?? best.seat.label : `Seat ${best.seat.label}`;
+    if (goldenActive) return `${prefix} (${where}): golden-hour view ${best.goldenView}/100, heat ${best.heat}/100.`;
+    if (night) return `${prefix} (${where}): night trip with no direct sun — choose for comfort.`;
+    return `${prefix} (${where}): in the shade ${best.shadePct}% of the time, thermal comfort ${best.thermalComfort}/100.`;
+  }
+  const prefix = mode === 'bus' ? `Poltrona ${best.seat.label}` : mode === 'car' ? best.seat.label : `Assento ${best.seat.label}`;
+  if (goldenActive) return `${prefix} (${where}): vista ${best.goldenView}/100 para a golden hour, calor ${best.heat}/100.`;
+  if (night) return `${prefix} (${where}): viagem noturna, sem sol direto — escolha pelo conforto.`;
+  return `${prefix} (${where}): ${best.shadePct}% do tempo na sombra, conforto térmico ${best.thermalComfort}/100.`;
+}
+
+/** Nomes dos lugares do carro em inglês (os rótulos do motor estão em português). */
+export const CAR_SEAT_NAMES_EN: Record<string, string> = {
+  'car-driver': 'Driver',
+  'car-front-right': 'Front passenger',
+  'car-rear-left': 'Rear left',
+  'car-rear-center': 'Rear center',
+  'car-rear-right': 'Rear right',
+};
 
 /** Ranqueia os assentos e escolhe o melhor para o modo de otimização. */
 export function recommendSeats(
@@ -357,13 +405,7 @@ export function recommendSeats(
   const best = ranking[0];
   const worst = [...selectable].sort((a, b) => a.score - b.score)[0];
 
-  const where = positionLabel(best.seat, mode);
-  const prefix = mode === 'bus' ? `Poltrona ${best.seat.label}` : mode === 'car' ? best.seat.label : `Assento ${best.seat.label}`;
-  const reason = goldenActive
-    ? `${prefix} (${where.toLowerCase()}): vista ${best.goldenView}/100 para a golden hour, calor ${best.heat}/100.`
-    : analysis.daylightMinutes === 0
-      ? `${prefix} (${where.toLowerCase()}): viagem noturna, sem sol direto — escolha pelo conforto.`
-      : `${prefix} (${where.toLowerCase()}): ${best.shadePct}% do tempo na sombra, conforto térmico ${best.thermalComfort}/100.`;
+  const reason = seatReasonText(best, mode, goldenActive, analysis.daylightMinutes === 0);
 
   return { mode, optimization, layout, scores, best, worst, ranking: ranking.slice(0, 5), reason };
 }

@@ -6,14 +6,17 @@ import { Screen } from '../../src/components/Screen';
 import { SeatMapSVG } from '../../src/components/SeatMapSVG';
 import { Card, Chip, SectionHeader, SegmentedControl } from '../../src/components/ui';
 import { useTrip } from '../../src/context/TripContext';
-import { positionLabel } from '../../src/engine/seatRecommender';
+import { positionLabel, seatReasonText } from '../../src/engine/seatRecommender';
 import type { SeatScore } from '../../src/engine/types';
+import { useI18n } from '../../src/i18n';
 import { haptics } from '../../src/services/deviceServices';
 import { goldenColor, heatColor, useAppTheme } from '../../src/theme/colors';
-import { MODE_META, MODES } from '../../src/utils/format';
+import { MODE_META, MODES, seatDisplayName } from '../../src/utils/format';
 
 export default function SeatsScreen() {
   const { colors, scheme } = useAppTheme();
+  const { s, lang } = useI18n();
+  const tx = s.seats;
   const { width } = useWindowDimensions();
   const t = useTrip();
   const { trip, seats, seatPrefs, analysis } = t;
@@ -22,13 +25,16 @@ export default function SeatsScreen() {
   const contentW = Math.min(width, 720) - 32;
   const mapW = Math.min(contentW - 32, trip.mode === 'car' ? 280 : trip.mode === 'boat' ? 330 : 360);
 
-  const current = selected ? seats.scores.find((s) => s.seat.id === selected.seat.id) ?? seats.best : seats.best;
+  const current = selected ? seats.scores.find((sc) => sc.seat.id === selected.seat.id) ?? seats.best : seats.best;
   const mode = trip.mode;
+  const goldenActive = seats.optimization === 'golden' && analysis.golden.available;
+  const reason = seatReasonText(seats.best, mode, goldenActive, analysis.daylightMinutes === 0, lang);
+  const name = (sc: SeatScore) => seatDisplayName(sc.seat, mode, lang);
 
   return (
-    <Screen title="Mapa de Assentos" subtitle={seats.layout.name}>
+    <Screen title={tx.title} subtitle={s.layoutNames[mode]}>
       <SegmentedControl
-        options={MODES.map((m) => ({ value: m, label: MODE_META[m].label, icon: MODE_META[m].icon }))}
+        options={MODES.map((m) => ({ value: m, label: s.modes[m], icon: MODE_META[m].icon }))}
         value={trip.mode}
         onChange={(m) => {
           setSelected(null);
@@ -39,21 +45,21 @@ export default function SeatsScreen() {
       <LinearGradient colors={['#FFB000', '#FF6A2B']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.best}>
         <Ionicons name="star" size={22} color="#FFFFFF" />
         <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={styles.bestKicker}>MELHOR ASSENTO DA VIAGEM</Text>
+          <Text style={styles.bestKicker}>{tx.bestKicker}</Text>
           <Text style={styles.bestTitle}>
-            {seats.best.seat.label} · {positionLabel(seats.best.seat, mode)}
+            {name(seats.best)} · {positionLabel(seats.best.seat, mode, lang)}
           </Text>
-          <Text style={styles.bestBody}>{seats.reason}</Text>
+          <Text style={styles.bestBody}>{reason}</Text>
         </View>
       </LinearGradient>
 
       <Card>
-        <Text style={[styles.filterLabel, { color: colors.textMuted }]}>PREFERÊNCIA</Text>
+        <Text style={[styles.filterLabel, { color: colors.textMuted }]}>{tx.preference}</Text>
         <View style={styles.chips}>
           {(['any', 'window', 'aisle'] as const).map((p) => (
             <Chip
               key={p}
-              label={p === 'any' ? 'Tanto faz' : p === 'window' ? 'Janela' : 'Corredor'}
+              label={p === 'any' ? tx.any : p === 'window' ? tx.window : tx.aisle}
               selected={(seatPrefs.position ?? 'any') === p}
               onPress={() => {
                 t.setSeatPrefs({ ...seatPrefs, position: p });
@@ -66,7 +72,7 @@ export default function SeatsScreen() {
           {(['any', 'front', 'middle', 'back'] as const).map((z) => (
             <Chip
               key={z}
-              label={z === 'any' ? 'Qualquer fileira' : z === 'front' ? 'Frente' : z === 'middle' ? 'Meio' : 'Fundo'}
+              label={z === 'any' ? tx.anyRow : z === 'front' ? tx.front : z === 'middle' ? tx.middle : tx.back}
               selected={(seatPrefs.zone ?? 'any') === z}
               onPress={() => {
                 t.setSeatPrefs({ ...seatPrefs, zone: z });
@@ -77,8 +83,8 @@ export default function SeatsScreen() {
         </View>
         <SegmentedControl
           options={[
-            { value: 'heat', label: 'Colorir por calor', icon: 'thermometer' },
-            { value: 'golden', label: 'Vista do pôr do sol', icon: 'partly-sunny' },
+            { value: 'heat', label: tx.colorHeat, icon: 'thermometer' },
+            { value: 'golden', label: tx.colorGolden, icon: 'partly-sunny' },
           ]}
           value={colorBy}
           onChange={setColorBy}
@@ -92,56 +98,55 @@ export default function SeatsScreen() {
             width={mapW}
             selectedId={current.seat.id}
             goldenView={colorBy === 'golden'}
-            onSelect={(s) => {
+            onSelect={(sc) => {
               haptics.selection();
-              setSelected(s);
+              setSelected(sc);
             }}
           />
         </View>
         <View style={styles.legendRow}>
-          <Text style={[styles.legendText, { color: colors.textSecondary }]}>{colorBy === 'heat' ? 'Sombra' : 'Sem vista'}</Text>
+          <Text style={[styles.legendText, { color: colors.textSecondary }]}>{colorBy === 'heat' ? tx.legendShade : tx.legendNoView}</Text>
           <View style={styles.ramp}>
             {Array.from({ length: 10 }, (_, i) => (
               <View key={i} style={{ flex: 1, backgroundColor: (colorBy === 'heat' ? heatColor : goldenColor)(i * 11, scheme) }} />
             ))}
           </View>
-          <Text style={[styles.legendText, { color: colors.textSecondary }]}>{colorBy === 'heat' ? 'Muito sol' : 'Vista dourada'}</Text>
+          <Text style={[styles.legendText, { color: colors.textSecondary }]}>{colorBy === 'heat' ? tx.legendHot : tx.legendGolden}</Text>
         </View>
-        <Text style={[styles.note, { color: colors.textMuted }]}>★ = melhor assento · toque em qualquer lugar para ver os detalhes</Text>
+        <Text style={[styles.note, { color: colors.textMuted }]}>{tx.mapNote}</Text>
       </Card>
 
-      <SectionHeader title={`${MODE_META[mode].seatWord[0].toUpperCase()}${MODE_META[mode].seatWord.slice(1)} ${current.seat.label}`} subtitle={positionLabel(current.seat, mode)} />
+      <SectionHeader
+        title={`${s.seatWord[mode][0].toUpperCase()}${s.seatWord[mode].slice(1)} ${name(current)}`}
+        subtitle={positionLabel(current.seat, mode, lang)}
+      />
       <Card>
-        <Meter label="Tempo na sombra" value={current.shadePct} suffix="%" color={colors.shade} />
-        <Meter label="Conforto térmico" value={current.thermalComfort} suffix="/100" color={colors.success} />
-        <Meter label="Calor (mapa)" value={current.heat} suffix="/100" color={colors.sunLeft} />
-        <Meter label="Vista do pôr/nascer do sol" value={current.goldenView} suffix="/100" color={colors.gold} />
+        <Meter label={tx.timeInShade} value={current.shadePct} suffix="%" color={colors.shade} />
+        <Meter label={tx.thermalComfort} value={current.thermalComfort} suffix="/100" color={colors.success} />
+        <Meter label={tx.heat} value={current.heat} suffix="/100" color={colors.sunLeft} />
+        <Meter label={tx.sunsetView} value={current.goldenView} suffix="/100" color={colors.gold} />
         <View style={[styles.uvRow, { borderTopColor: colors.separator }]}>
           <Ionicons name="shield-half" size={18} color={colors.textSecondary} />
           <Text style={[styles.uvText, { color: colors.text }]}>
-            UVA na janela: <Text style={{ fontWeight: '700' }}>{current.uvLevel}</Text>
-            {current.uvBehindGlass > 0 ? ` (índice ~${current.uvBehindGlass.toFixed(1)} atrás do vidro)` : ''}
+            {tx.uvAtWindow} <Text style={{ fontWeight: '700' }}>{s.uvLevels[current.uvLevel]}</Text>
+            {current.uvBehindGlass > 0 ? tx.behindGlass(current.uvBehindGlass.toFixed(1)) : ''}
           </Text>
         </View>
-        {!current.seat.selectable ? (
-          <Text style={[styles.note, { color: colors.textMuted }]}>Assento do motorista: só para consulta — a recomendação considera os passageiros.</Text>
-        ) : null}
-        {current.seat.overWing ? <Text style={[styles.note, { color: colors.textMuted }]}>Sobre a asa: a vista do horizonte fica parcialmente bloqueada.</Text> : null}
+        {!current.seat.selectable ? <Text style={[styles.note, { color: colors.textMuted }]}>{tx.driverNote}</Text> : null}
+        {current.seat.overWing ? <Text style={[styles.note, { color: colors.textMuted }]}>{tx.overWingNote}</Text> : null}
       </Card>
 
-      <SectionHeader title="Top 5 assentos" subtitle={analysis.input.optimization === 'golden' ? 'Ranking para ver a golden hour' : 'Ranking para fugir do sol'} />
+      <SectionHeader title={tx.top5} subtitle={analysis.input.optimization === 'golden' ? tx.rankGolden : tx.rankShade} />
       <Card>
-        {seats.ranking.map((s, i) => (
-          <View key={s.seat.id} style={[styles.rankRow, { borderBottomColor: colors.separator }]}>
+        {seats.ranking.map((sc, i) => (
+          <View key={sc.seat.id} style={[styles.rankRow, { borderBottomColor: colors.separator }]}>
             <Text style={[styles.rankPos, { color: colors.textMuted }]}>{i + 1}</Text>
-            <View style={[styles.rankSwatch, { backgroundColor: heatColor(s.heat, scheme) }]} />
+            <View style={[styles.rankSwatch, { backgroundColor: heatColor(sc.heat, scheme) }]} />
             <View style={{ flex: 1 }}>
               <Text style={[styles.rankTitle, { color: colors.text }]}>
-                {s.seat.label} · {positionLabel(s.seat, mode)}
+                {name(sc)} · {positionLabel(sc.seat, mode, lang)}
               </Text>
-              <Text style={[styles.rankSub, { color: colors.textSecondary }]}>
-                {s.shadePct}% na sombra · conforto {s.thermalComfort}/100 · vista {s.goldenView}/100
-              </Text>
+              <Text style={[styles.rankSub, { color: colors.textSecondary }]}>{tx.rankRow(sc.shadePct, sc.thermalComfort, sc.goldenView)}</Text>
             </View>
           </View>
         ))}

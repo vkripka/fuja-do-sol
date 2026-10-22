@@ -38,6 +38,7 @@ Marque cada item antes de enviar para revisão. ✅ = já atendido no código/co
 - ✅ **5.1.2** Nenhum dado compartilhado com terceiros para publicidade/analytics.
 - ☐ Rótulo de privacidade no App Store Connect: **"Data Not Collected"**.
 - ✅ **5.2** Atribuição de dados de mapas: "© colaboradores do OpenStreetMap" na tela Salvos → Sobre.
+- ☐ Mapas **Mapa/Satélite** usam tiles públicos da Esri (`server.arcgisonline.com`): confirme os termos de uso da Esri para apps publicados (pode exigir conta ArcGIS Location Platform). O modo **Clean** não depende de terceiros.
 - ✅ Uso dos servidores públicos OSRM/Nominatim dentro das políticas de uso (User-Agent identificado, debounce de 650 ms, cache local e opção de desligar).
 
 ## Envio

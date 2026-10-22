@@ -2,18 +2,19 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Card, Chip, PrimaryButton, SectionHeader, SegmentedControl } from '../../src/components/ui';
+import { AppLogoSVG } from '../../src/components/AppLogoSVG';
 import { PlaceSearchField } from '../../src/components/PlaceSearchField';
 import { Screen } from '../../src/components/Screen';
+import { Card, Chip, SectionHeader, SegmentedControl } from '../../src/components/ui';
 import { useTrip } from '../../src/context/TripContext';
 import { PRESET_TRIPS } from '../../src/data/presetTrips';
-import { addToHistory } from '../../src/services/storageService';
+import { localizeVerdict } from '../../src/engine/verdict';
+import { dateParts, useI18n } from '../../src/i18n';
 import { haptics } from '../../src/services/deviceServices';
+import { addToHistory } from '../../src/services/storageService';
 import { skyGradient, useAppTheme } from '../../src/theme/colors';
 import {
   addDays,
-  busSeatHint,
-  dateChipLabel,
   formatDuration,
   formatKm,
   formatTime,
@@ -22,6 +23,7 @@ import {
   MODES,
   nowRounded,
   parseTime,
+  seatDisplayName,
 } from '../../src/utils/format';
 
 const MORNING = '08:00';
@@ -29,6 +31,8 @@ const AFTERNOON = '15:00';
 
 export default function SimulateScreen() {
   const { colors, scheme } = useAppTheme();
+  const { s, lang } = useI18n();
+  const tx = s.simulate;
   const t = useTrip();
   const { trip, analysis, seats, route, routeLoading } = t;
   const tz = trip.origin.tz;
@@ -37,6 +41,7 @@ export default function SimulateScreen() {
   const days = Array.from({ length: 7 }, (_, i) => addDays(today, i));
   const { hour, minute } = parseTime(trip.time);
   const isNow = trip.date === today && minutesBetween(trip.time, now.time) <= 5;
+  const verdict = localizeVerdict(analysis, lang);
 
   const shiftTime = (deltaMin: number) => {
     const total = (((hour * 60 + minute + deltaMin) % 1440) + 1440) % 1440;
@@ -62,17 +67,28 @@ export default function SimulateScreen() {
   const sky = skyGradient(hour + minute / 60, scheme);
   const side = analysis.recommendedSide;
   const shade = side === 'left' ? analysis.shadePct.left : side === 'right' ? analysis.shadePct.right : null;
+  const routeText = routeLoading
+    ? tx.routeTracing
+    : `${formatKm(analysis.totalDistanceKm)} · ${
+        route?.source === 'osrm'
+          ? tx.routeOsrm
+          : route?.source === 'waypoints'
+            ? tx.routePreset
+            : trip.mode === 'plane'
+              ? tx.routeFlight
+              : tx.routeOffline
+      }`;
 
   return (
-    <Screen title="Fuja do Sol!" subtitle="De que lado sentar para fugir do sol — ou ver o pôr do sol." skyHour={hour + minute / 60}>
+    <Screen title={s.appName} subtitle={s.appTagline} skyHour={hour + minute / 60} leading={<AppLogoSVG size={40} />}>
       <SegmentedControl
-        options={MODES.map((m) => ({ value: m, label: MODE_META[m].label, icon: MODE_META[m].icon }))}
+        options={MODES.map((m) => ({ value: m, label: s.modes[m], icon: MODE_META[m].icon }))}
         value={trip.mode}
         onChange={t.setMode}
       />
 
       <Card style={{ marginTop: 14 }}>
-        <PlaceSearchField label="Origem" value={trip.origin} onSelect={t.setOrigin} allowCurrentLocation online={t.preferences.useOnlineServices} />
+        <PlaceSearchField label={s.search.origin} value={trip.origin} onSelect={t.setOrigin} allowCurrentLocation online={t.preferences.useOnlineServices} />
         <View style={styles.swapRow}>
           <View style={[styles.hair, { backgroundColor: colors.separator }]} />
           <Pressable
@@ -81,29 +97,17 @@ export default function SimulateScreen() {
               t.swap();
             }}
             accessibilityRole="button"
-            accessibilityLabel="Inverter origem e destino"
+            accessibilityLabel={tx.swapA11y}
             style={[styles.swap, { backgroundColor: colors.chipBackground }]}
           >
             <Ionicons name="swap-vertical" size={20} color={colors.tint} />
           </Pressable>
         </View>
-        <PlaceSearchField label="Destino" value={trip.destination} onSelect={t.setDestination} online={t.preferences.useOnlineServices} />
-        <Text style={[styles.routeInfo, { color: colors.textSecondary }]}>
-          {routeLoading
-            ? 'Traçando a rota…'
-            : `${formatKm(analysis.totalDistanceKm)} · ${
-                route?.source === 'osrm'
-                  ? 'rota real (OpenStreetMap/OSRM)'
-                  : route?.source === 'waypoints'
-                    ? 'traçado da rota famosa'
-                    : trip.mode === 'plane'
-                      ? 'rota de voo (grande círculo)'
-                      : 'rota estimada offline'
-              }`}
-        </Text>
+        <PlaceSearchField label={s.search.destination} value={trip.destination} onSelect={t.setDestination} online={t.preferences.useOnlineServices} />
+        <Text style={[styles.routeInfo, { color: colors.textSecondary }]}>{routeText}</Text>
       </Card>
 
-      <SectionHeader title="Rotas famosas em 1 toque" />
+      <SectionHeader title={tx.presetsTitle} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.carousel} contentContainerStyle={{ paddingRight: 16 }}>
         {PRESET_TRIPS.map((p) => {
           const active = trip.presetId === p.id;
@@ -131,18 +135,18 @@ export default function SimulateScreen() {
                 {p.subtitle}
               </Text>
               <Text style={[styles.presetMeta, { color: colors.textMuted }]}>
-                {p.time} · {formatDuration(p.durationMinutes)} · {p.optimization === 'golden' ? 'Golden hour' : 'Sombra'}
+                {p.time} · {formatDuration(p.durationMinutes)} · {p.optimization === 'golden' ? tx.goalGolden : tx.goalShade}
               </Text>
             </Pressable>
           );
         })}
       </ScrollView>
 
-      <SectionHeader title="Quando" subtitle={`Horário local de ${trip.origin.city}`} />
+      <SectionHeader title={tx.whenTitle} subtitle={tx.localTimeOf(trip.origin.city)} />
       <Card>
         <View style={styles.days}>
           {days.map((d) => {
-            const l = dateChipLabel(d);
+            const l = dateParts(d, lang);
             const sel = d === trip.date;
             return (
               <Pressable
@@ -153,10 +157,10 @@ export default function SimulateScreen() {
                 }}
                 accessibilityRole="button"
                 accessibilityState={{ selected: sel }}
-                accessibilityLabel={`${l.weekday} ${l.day} de ${l.month}`}
+                accessibilityLabel={`${l.weekday} ${l.day} ${l.month}`}
                 style={[styles.day, { backgroundColor: sel ? colors.tint : colors.chipBackground }]}
               >
-                <Text style={[styles.dayWeek, { color: sel ? '#1A1000' : colors.textSecondary }]}>{d === today ? 'Hoje' : l.weekday}</Text>
+                <Text style={[styles.dayWeek, { color: sel ? '#1A1000' : colors.textSecondary }]}>{d === today ? tx.today : l.weekday}</Text>
                 <Text style={[styles.dayNum, { color: sel ? '#1A1000' : colors.text }]}>{l.day}</Text>
               </Pressable>
             );
@@ -164,45 +168,41 @@ export default function SimulateScreen() {
         </View>
 
         <View style={styles.timeRow}>
-          <Stepper label="−30m" onPress={() => shiftTime(-30)} />
-          <Text style={[styles.time, { color: colors.text }]} accessibilityLabel={`Partida às ${trip.time}`}>
+          <Stepper label="−30m" a11y={tx.stepA11y('−30m')} onPress={() => shiftTime(-30)} />
+          <Text style={[styles.time, { color: colors.text }]} accessibilityLabel={tx.departureA11y(trip.time)}>
             {trip.time}
           </Text>
-          <Stepper label="+30m" onPress={() => shiftTime(30)} />
+          <Stepper label="+30m" a11y={tx.stepA11y('+30m')} onPress={() => shiftTime(30)} />
         </View>
         <View style={styles.chips}>
-          <Chip label="Agora" icon="flash" selected={isNow} onPress={setNow} />
-          <Chip label={`Manhã ${MORNING}`} selected={!isNow && trip.time === MORNING} onPress={() => t.setTime(MORNING)} />
-          <Chip label={`Tarde ${AFTERNOON}`} selected={!isNow && trip.time === AFTERNOON} onPress={() => t.setTime(AFTERNOON)} />
+          <Chip label={tx.now} icon="flash" selected={isNow} onPress={setNow} />
+          <Chip label={`${tx.morning} ${MORNING}`} selected={!isNow && trip.time === MORNING} onPress={() => t.setTime(MORNING)} />
+          <Chip label={`${tx.afternoon} ${AFTERNOON}`} selected={!isNow && trip.time === AFTERNOON} onPress={() => t.setTime(AFTERNOON)} />
         </View>
 
         <View style={[styles.durationRow, { borderTopColor: colors.separator }]}>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.label, { color: colors.textMuted }]}>DURAÇÃO</Text>
+            <Text style={[styles.label, { color: colors.textMuted }]}>{tx.duration}</Text>
             <Text style={[styles.duration, { color: colors.text }]}>{formatDuration(trip.durationMinutes)}</Text>
             <Text style={[styles.hint, { color: colors.textSecondary }]}>
-              {trip.durationAuto
-                ? routeLoading
-                  ? 'Estimativa rápida — refinando com a rota real…'
-                  : 'Calculada pela rota e pelo meio de transporte'
-                : `Sugerido: ${formatDuration(t.suggestedDuration)}`}
+              {trip.durationAuto ? (routeLoading ? tx.durationRefining : tx.durationAuto) : tx.durationSuggested(formatDuration(t.suggestedDuration))}
             </Text>
           </View>
-          <Stepper label="−15" onPress={() => t.setDuration(trip.durationMinutes - 15)} />
-          <Stepper label="+15" onPress={() => t.setDuration(trip.durationMinutes + 15)} />
+          <Stepper label="−15" a11y={tx.stepA11y('−15')} onPress={() => t.setDuration(trip.durationMinutes - 15)} />
+          <Stepper label="+15" a11y={tx.stepA11y('+15')} onPress={() => t.setDuration(trip.durationMinutes + 15)} />
         </View>
         {!trip.durationAuto ? (
           <View style={styles.chips}>
-            <Chip label="Usar duração sugerida" icon="refresh" onPress={t.resetDurationAuto} />
+            <Chip label={tx.useSuggested} icon="refresh" onPress={t.resetDurationAuto} />
           </View>
         ) : null}
       </Card>
 
-      <SectionHeader title="Objetivo" />
+      <SectionHeader title={tx.goalTitle} />
       <SegmentedControl
         options={[
-          { value: 'shade', label: 'Fuja do Sol', icon: 'umbrella' },
-          { value: 'golden', label: 'Golden Hour', icon: 'partly-sunny' },
+          { value: 'shade', label: tx.modeShade, icon: 'umbrella' },
+          { value: 'golden', label: tx.modeGolden, icon: 'partly-sunny' },
         ]}
         value={trip.optimization}
         onChange={t.setOptimization}
@@ -213,37 +213,39 @@ export default function SimulateScreen() {
         <Pressable
           onPress={openResults}
           accessibilityRole="button"
-          accessibilityLabel={`${analysis.verdict}. Abrir Raio-X da viagem`}
+          accessibilityLabel={tx.openXrayA11y(verdict.verdict)}
           style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
         >
           <View style={styles.verdictHead}>
-            <Text style={styles.verdictKicker}>VEREDITO IMEDIATO</Text>
+            <Text style={styles.verdictKicker}>{tx.verdictKicker}</Text>
             <Ionicons name="chevron-forward" size={18} color="#FFFFFFCC" />
           </View>
-          <Text style={styles.verdictTitle}>{analysis.verdict}</Text>
-          <Text style={styles.verdictBody}>{analysis.verdictDetail}</Text>
+          <Text style={styles.verdictTitle}>{verdict.verdict}</Text>
+          <Text style={styles.verdictBody}>{verdict.verdictDetail}</Text>
           {analysis.daylightMinutes > 0 ? (
             <View style={styles.verdictStats}>
-              <VerdictStat label="Melhor lugar" value={seats.best.seat.label} />
-              <VerdictStat label="Na sombra" value={shade !== null ? `${shade}%` : '—'} />
-              <VerdictStat label="Viradas" value={String(analysis.flips.length)} />
+              <VerdictStat label={tx.bestSeat} value={seatDisplayName(seats.best.seat, trip.mode, lang)} />
+              <VerdictStat label={tx.inShade} value={shade !== null ? `${shade}%` : '—'} />
+              <VerdictStat label={tx.flips} value={String(analysis.flips.length)} />
             </View>
           ) : null}
-          {trip.mode === 'bus' && side !== 'either' ? <Text style={styles.verdictHint}>Ônibus: {busSeatHint(side)}</Text> : null}
+          {trip.mode === 'bus' && side !== 'either' ? <Text style={styles.verdictHint}>{tx.busHint(s.busSeatHint(side))}</Text> : null}
         </Pressable>
         {analysis.daylightMinutes === 0 ? (
-          <Pressable onPress={tomorrowMorning} accessibilityRole="button" accessibilityLabel="Simular amanhã às 08:00" style={styles.nightButton}>
+          <Pressable onPress={tomorrowMorning} accessibilityRole="button" accessibilityLabel={tx.nightTomorrow} style={styles.nightButton}>
             <Ionicons name="sunny" size={16} color="#1A1000" />
-            <Text style={styles.nightButtonText}>Simular amanhã às 08:00</Text>
+            <Text style={styles.nightButtonText}>{tx.nightTomorrow}</Text>
           </Pressable>
         ) : null}
+        <Pressable onPress={openResults} accessibilityRole="button" accessibilityLabel={tx.openXrayFooter} style={styles.verdictFooter}>
+          <Text style={styles.verdictFooterText}>{tx.openXrayFooter}</Text>
+        </Pressable>
       </LinearGradient>
-      <PrimaryButton label="Abrir Raio-X da viagem" icon="analytics" onPress={openResults} />
     </Screen>
   );
 }
 
-function Stepper({ label, onPress }: { label: string; onPress: () => void }) {
+function Stepper({ label, a11y, onPress }: { label: string; a11y: string; onPress: () => void }) {
   const { colors } = useAppTheme();
   return (
     <Pressable
@@ -252,7 +254,7 @@ function Stepper({ label, onPress }: { label: string; onPress: () => void }) {
         onPress();
       }}
       accessibilityRole="button"
-      accessibilityLabel={label.replace('−', 'menos ').replace('+', 'mais ')}
+      accessibilityLabel={a11y}
       style={({ pressed }) => [styles.stepper, { backgroundColor: colors.chipBackground, opacity: pressed ? 0.7 : 1 }]}
     >
       <Text style={[styles.stepperText, { color: colors.tintText }]}>{label}</Text>
@@ -264,7 +266,9 @@ function VerdictStat({ label, value }: { label: string; value: string }) {
   return (
     <View style={{ flex: 1 }}>
       <Text style={styles.verdictStatLabel}>{label}</Text>
-      <Text style={styles.verdictStatValue}>{value}</Text>
+      <Text style={styles.verdictStatValue} numberOfLines={1} adjustsFontSizeToFit>
+        {value}
+      </Text>
     </View>
   );
 }
@@ -310,8 +314,17 @@ const styles = StyleSheet.create({
   verdictKicker: { color: '#FFFFFFCC', fontSize: 12, fontWeight: '800', letterSpacing: 1 },
   verdictTitle: { color: '#FFFFFF', fontSize: 26, fontWeight: '800', marginTop: 6, letterSpacing: -0.5, textShadowColor: '#00000033', textShadowRadius: 6 },
   verdictBody: { color: '#FFFFFFEE', fontSize: 15, marginTop: 8, lineHeight: 20 },
-  verdictStats: { flexDirection: 'row', marginTop: 16 },
+  verdictStats: { flexDirection: 'row', marginTop: 16, gap: 8 },
   verdictStatLabel: { color: '#FFFFFFCC', fontSize: 12, fontWeight: '600' },
   verdictStatValue: { color: '#FFFFFF', fontSize: 22, fontWeight: '800', marginTop: 2 },
   verdictHint: { color: '#FFFFFFEE', fontSize: 13, marginTop: 12 },
+  verdictFooter: {
+    marginTop: 16,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#FFFFFF55',
+    minHeight: 36,
+    justifyContent: 'center',
+  },
+  verdictFooterText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
 });

@@ -148,7 +148,11 @@ describe('Geocodificação online (Nominatim)', () => {
     const t = await searchPlaces('Lugar inexistente', { fetchImpl: slow, timeoutMs: 20 });
     expect(t.error).toMatch(/Tempo esgotado/);
     expect((await searchPlaces('Petrópolis abc', { online: false })).source).toBe('offline');
-    expect((await searchPlaces('sao')).source).toBe('offline');
+    // nome idêntico na base offline dispensa a busca online
+    const never = okJson([]);
+    expect((await searchPlaces('Curitiba', { fetchImpl: never })).source).toBe('offline');
+    expect(never).not.toHaveBeenCalled();
+    expect((await searchPlaces('ab', { fetchImpl: never })).source).toBe('offline');
   });
 
   it('lê cache persistente entre sessões e ignora cache corrompido', async () => {

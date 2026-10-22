@@ -2,19 +2,21 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { BlurView } from 'expo-blur';
 import { Tabs } from 'expo-router/js-tabs';
 import { Platform, StyleSheet } from 'react-native';
+import { useI18n, type Strings } from '../../src/i18n';
 import { useAppTheme } from '../../src/theme/colors';
 import type { IconName } from '../../src/utils/format';
 
-const TABS: Array<{ name: string; title: string; icon: IconName; iconActive: IconName }> = [
-  { name: 'index', title: 'Simular', icon: 'sunny-outline', iconActive: 'sunny' },
-  { name: 'results', title: 'Raio-X', icon: 'analytics-outline', iconActive: 'analytics' },
-  { name: 'seats', title: 'Assentos', icon: 'grid-outline', iconActive: 'grid' },
-  { name: 'optimizer', title: 'Horários', icon: 'time-outline', iconActive: 'time' },
-  { name: 'saved', title: 'Salvos', icon: 'bookmark-outline', iconActive: 'bookmark' },
+const TABS: Array<{ name: string; title: keyof Strings['tabs']; icon: IconName; iconActive: IconName }> = [
+  { name: 'index', title: 'simulate', icon: 'sunny-outline', iconActive: 'sunny' },
+  { name: 'results', title: 'xray', icon: 'analytics-outline', iconActive: 'analytics' },
+  { name: 'seats', title: 'seats', icon: 'grid-outline', iconActive: 'grid' },
+  { name: 'optimizer', title: 'bestTime', icon: 'time-outline', iconActive: 'time' },
+  { name: 'saved', title: 'saved', icon: 'bookmark-outline', iconActive: 'bookmark' },
 ];
 
 export default function TabLayout() {
   const { colors, scheme } = useAppTheme();
+  const { s } = useI18n();
   const ios = Platform.OS === 'ios';
   return (
     <Tabs
@@ -36,9 +38,11 @@ export default function TabLayout() {
           key={t.name}
           name={t.name}
           options={{
-            title: t.title,
-            tabBarAccessibilityLabel: t.title,
-            tabBarIcon: ({ color, focused, size }) => <Ionicons name={focused ? t.iconActive : t.icon} size={size} color={typeof color === 'string' ? color : undefined} />,
+            title: s.tabs[t.title],
+            tabBarAccessibilityLabel: s.tabs[t.title],
+            tabBarIcon: ({ color, focused, size }) => (
+              <Ionicons name={focused ? t.iconActive : t.icon} size={size} color={typeof color === 'string' ? color : undefined} />
+            ),
           }}
         />
       ))}

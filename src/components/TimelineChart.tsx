@@ -8,6 +8,7 @@ import { Pressable, StyleSheet, Text, View, type GestureResponderEvent } from 'r
 import Svg, { G, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
 import { formatZonedTime, type TimeZoneId } from '../engine/timezone';
 import type { TripAnalysisResult } from '../engine/types';
+import { useI18n } from '../i18n';
 import { useAppTheme } from '../theme/colors';
 import { LegendItem } from './ui';
 
@@ -76,6 +77,7 @@ export function TimelineChart({
   onScrub?: (fraction: number) => void;
 }) {
   const { colors } = useAppTheme();
+  const tx = useI18n().s.timeline;
   const bins = useMemo(() => buildBins(analysis), [analysis]);
   const [selected, setSelected] = useState<number | null>(null);
   const top = 8;
@@ -117,11 +119,11 @@ export function TimelineChart({
   return (
     <View>
       <View style={styles.legend}>
-        <LegendItem color={colors.sunLeft} label="Sol na esquerda (acima)" />
-        <LegendItem color={colors.sunRight} label="Sol na direita (abaixo)" />
-        <LegendItem color={colors.night} label="Noite" />
+        <LegendItem color={colors.sunLeft} label={tx.legendLeft} />
+        <LegendItem color={colors.sunRight} label={tx.legendRight} />
+        <LegendItem color={colors.night} label={tx.legendNight} />
       </View>
-      <Pressable onPress={handlePress} accessibilityRole="adjustable" accessibilityLabel="Linha do tempo do sol. Toque para inspecionar um trecho.">
+      <Pressable onPress={handlePress} accessibilityRole="adjustable" accessibilityLabel={tx.a11y}>
         <Svg width={width} height={height}>
           {bins.map((b, i) =>
             b.night ? <Rect key={`n${i}`} x={left + i * bw} y={top} width={bw} height={plotH} fill={colors.night} opacity={0.14} /> : null,
@@ -172,11 +174,13 @@ export function TimelineChart({
               {t(sel.start)}–{t(sel.end)}
             </Text>
             {sel.night
-              ? '  ·  Noite, sem sol direto'
-              : `  ·  Esquerda ${(sel.left * 1000).toFixed(0)} W/m²  ·  Direita ${(sel.right * 1000).toFixed(0)} W/m²${sel.front > 0.05 ? `  ·  Frente/trás ${(sel.front * 1000).toFixed(0)} W/m²` : ''}`}
+              ? `  ·  ${tx.night}`
+              : `  ·  ${tx.left} ${(sel.left * 1000).toFixed(0)} W/m²  ·  ${tx.right} ${(sel.right * 1000).toFixed(0)} W/m²${
+                  sel.front > 0.05 ? `  ·  ${tx.frontBack} ${(sel.front * 1000).toFixed(0)} W/m²` : ''
+                }`}
           </Text>
         ) : (
-          <Text style={[styles.tooltipText, { color: colors.textSecondary }]}>Toque numa faixa para ver o sol em cada janela.</Text>
+          <Text style={[styles.tooltipText, { color: colors.textSecondary }]}>{tx.idle}</Text>
         )}
       </View>
     </View>

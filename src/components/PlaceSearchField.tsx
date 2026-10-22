@@ -2,7 +2,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { KIND_LABELS, type Place, type PlaceKind } from '../data/hubs';
+import type { Place, PlaceKind } from '../data/hubs';
+import { useI18n } from '../i18n';
 import { getCurrentCoordinates, haptics } from '../services/deviceServices';
 import { placeFromCoordinates, searchOffline, searchPlaces } from '../services/geocodingService';
 import { useAppTheme } from '../theme/colors';
@@ -31,6 +32,8 @@ export function PlaceSearchField({
   online?: boolean;
 }) {
   const { colors } = useAppTheme();
+  const { s: i18n, lang } = useI18n();
+  const tx = i18n.search;
   const [editing, setEditing] = useState(false);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Place[]>([]);
@@ -46,7 +49,7 @@ export function PlaceSearchField({
     const id = ++reqId.current;
     const timer = setTimeout(() => {
       setLoading(true);
-      void searchPlaces(q, { online: true })
+      void searchPlaces(q, { online: true, language: lang })
         .then((r) => {
           if (id === reqId.current) setResults(r.results);
         })
@@ -55,7 +58,7 @@ export function PlaceSearchField({
         });
     }, 650);
     return () => clearTimeout(timer);
-  }, [query, editing, online]);
+  }, [query, editing, online, lang]);
 
   const choose = (p: Place) => {
     haptics.selection();
@@ -68,7 +71,7 @@ export function PlaceSearchField({
     setLocating(true);
     const c = await getCurrentCoordinates();
     setLocating(false);
-    if (c) choose(placeFromCoordinates(c));
+    if (c) choose(placeFromCoordinates(c, lang));
   };
 
   if (!editing) {
@@ -76,7 +79,7 @@ export function PlaceSearchField({
       <Pressable
         onPress={() => setEditing(true)}
         accessibilityRole="button"
-        accessibilityLabel={`${label}: ${value.name}. Toque para alterar.`}
+        accessibilityLabel={tx.changeA11y(label, value.name)}
         style={({ pressed }) => [styles.display, { opacity: pressed ? 0.7 : 1 }]}
       >
         <View style={[styles.iconWrap, { backgroundColor: colors.chipBackground }]}>
@@ -104,22 +107,22 @@ export function PlaceSearchField({
           autoFocus
           value={query}
           onChangeText={setQuery}
-          placeholder={`${label}: cidade, rodoviária, aeroporto…`}
+          placeholder={tx.placeholder(label)}
           placeholderTextColor={colors.textMuted}
           style={[styles.input, { color: colors.text }]}
           autoCorrect={false}
           returnKeyType="search"
-          accessibilityLabel={`Buscar ${label.toLowerCase()}`}
+          accessibilityLabel={tx.searchA11y(label)}
         />
         {loading ? <ActivityIndicator size="small" color={colors.tint} /> : null}
-        <Pressable onPress={() => setEditing(false)} accessibilityRole="button" accessibilityLabel="Cancelar busca" hitSlop={10}>
-          <Text style={{ color: colors.tintText, fontWeight: '600', marginLeft: 8 }}>Cancelar</Text>
+        <Pressable onPress={() => setEditing(false)} accessibilityRole="button" accessibilityLabel={tx.cancelSearch} hitSlop={10}>
+          <Text style={{ color: colors.tintText, fontWeight: '600', marginLeft: 8 }}>{i18n.cancel}</Text>
         </Pressable>
       </View>
       {allowCurrentLocation ? (
-        <Pressable onPress={useLocation} style={styles.result} accessibilityRole="button" accessibilityLabel="Usar minha localização">
+        <Pressable onPress={useLocation} style={styles.result} accessibilityRole="button" accessibilityLabel={tx.useMyLocation}>
           <Ionicons name="navigate" size={18} color={colors.tint} style={{ width: 26 }} />
-          <Text style={[styles.resultName, { color: colors.tintText }]}>{locating ? 'Localizando…' : 'Usar minha localização'}</Text>
+          <Text style={[styles.resultName, { color: colors.tintText }]}>{locating ? tx.locating : tx.useMyLocation}</Text>
         </Pressable>
       ) : null}
       {results.map((p) => (
@@ -128,7 +131,7 @@ export function PlaceSearchField({
           onPress={() => choose(p)}
           style={({ pressed }) => [styles.result, { borderBottomColor: colors.separator, opacity: pressed ? 0.6 : 1 }]}
           accessibilityRole="button"
-          accessibilityLabel={`${p.name}, ${KIND_LABELS[p.kind]}`}
+          accessibilityLabel={`${p.name}, ${i18n.kinds[p.kind]}`}
         >
           <Ionicons name={KIND_ICON[p.kind]} size={18} color={colors.textSecondary} style={{ width: 26 }} />
           <View style={{ flex: 1 }}>
@@ -137,14 +140,14 @@ export function PlaceSearchField({
               {p.code ? <Text style={{ color: colors.textMuted }}> {p.code}</Text> : null}
             </Text>
             <Text style={[styles.sub, { color: colors.textSecondary }]} numberOfLines={1}>
-              {KIND_LABELS[p.kind]} · {[p.city, p.region, p.country].filter(Boolean).join(', ')}
+              {i18n.kinds[p.kind]} · {[p.city, p.region, p.country].filter(Boolean).join(', ')}
               {p.source === 'online' ? ' · OpenStreetMap' : ''}
             </Text>
           </View>
         </Pressable>
       ))}
       {query.trim().length > 0 && results.length === 0 && !loading ? (
-        <Text style={[styles.empty, { color: colors.textSecondary }]}>Nenhum lugar encontrado. Tente outro nome.</Text>
+        <Text style={[styles.empty, { color: colors.textSecondary }]}>{tx.noResults}</Text>
       ) : null}
     </View>
   );

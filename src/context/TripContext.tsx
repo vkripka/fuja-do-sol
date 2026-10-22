@@ -16,7 +16,14 @@ import type {
   TripAnalysisResult,
 } from '../engine/types';
 import { getRoute, type RouteResult } from '../services/routingService';
-import { createTripId, getPreferences, savePreferences, type SavedTrip, type UserPreferences } from '../services/storageService';
+import {
+  createTripId,
+  DEFAULT_PREFERENCES,
+  getPreferences,
+  savePreferences,
+  type SavedTrip,
+  type UserPreferences,
+} from '../services/storageService';
 import { dateKey, nowRounded, parseDateKey, parseTime } from '../utils/format';
 
 export interface TripState {
@@ -95,13 +102,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
   // Incrementado a cada troca de rota para reaplicar a duração da rota real (em cache) mesmo sem mudança de chave.
   const [routeNonce, setRouteNonce] = useState(0);
   const [seatPrefs, setSeatPrefs] = useState<SeatPreferences>({});
-  const [preferences, setPreferences] = useState<UserPreferences>({
-    optimization: 'shade',
-    seatPosition: 'any',
-    seatZone: 'any',
-    alertLeadMinutes: 5,
-    useOnlineServices: true,
-  });
+  const [preferences, setPreferences] = useState<UserPreferences>(DEFAULT_PREFERENCES);
 
   useEffect(() => {
     let alive = true;

@@ -41,6 +41,17 @@ export interface UserPreferences {
   /** Minutos de antecedência dos alertas de cortina. */
   alertLeadMinutes: number;
   useOnlineServices: boolean;
+  language: 'pt' | 'en';
+}
+
+/** Idioma do aparelho: português para pt-*, inglês para o resto. */
+export function detectDeviceLanguage(): 'pt' | 'en' {
+  try {
+    const locale = Intl.DateTimeFormat().resolvedOptions().locale ?? '';
+    return locale.toLowerCase().startsWith('pt') ? 'pt' : 'en';
+  } catch {
+    return 'pt';
+  }
 }
 
 export const DEFAULT_PREFERENCES: UserPreferences = {
@@ -49,6 +60,7 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   seatZone: 'any',
   alertLeadMinutes: 5,
   useOnlineServices: true,
+  language: detectDeviceLanguage(),
 };
 
 async function readJson<T>(key: string, fallback: T): Promise<T> {
